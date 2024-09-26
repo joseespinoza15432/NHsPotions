@@ -1,6 +1,5 @@
 # API Specification for Potion Exchange Compatible Shops
-import sqlalchemy
-from src import database as db
+
 
 ## 1. Customer Purchasing
 

@@ -1,5 +1,10 @@
 from fastapi import APIRouter
 
+import sqlalchemy
+from src import database as db
+with db.engine.begin() as connection:
+        result = connection.execute(sqlalchemy.text(sql_to_execute))
+
 router = APIRouter()
 
 
