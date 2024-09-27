@@ -6,8 +6,8 @@ from enum import Enum
 import sqlalchemy
 from src import database as db
 
-with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text(sql_to_execute))
+#with db.engine.begin() as connection:
+#        result = connection.execute(sqlalchemy.text(sql_to_execute))
 
 router = APIRouter(
     prefix="/carts",
