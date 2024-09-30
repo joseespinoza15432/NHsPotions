@@ -21,7 +21,7 @@ def get_catalog():
 
     if row:
         greenpotioninventory = row['num_green_potions']
-        #print(greenpotioninventory)
+        print(greenpotioninventory)
         
     if greenpotioninventory > 0:
         return [
