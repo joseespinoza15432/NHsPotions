@@ -35,15 +35,17 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
 @router.post("/plan")
 def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     """ """
-    
-    
 
+    #with db.engine.begin() as connection:
+    #    result = connection.execute(sqlalchemy.text("SELECT num_green_potions FROM global_inventory, WHERE num_green_potions < 10"))
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT num_green_potions FROM global_inventory, WHERE num_green_potions < 10"))
-        
-    greenpotioninventory = result = connection.execute(sqlalchemy.text("SELECT num_green_potions FROM global_inventory"))
+        result = connection.execute(sqlalchemy.text("SELECT num_green_potions FROM global_inventory"))
 
-    
+    row = result.fetchone()
+    if row:
+        greenpotioninventory = row['num_green_potions']
+        #print(greenpotioninventory)
+
     print(wholesale_catalog)
 
     if greenpotioninventory < 10:
@@ -54,3 +56,16 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
             }
         ]
 
+"""
+from sqlalchemy import text
+
+# Execute the SQL query directly
+with db.engine.begin() as connection:
+    result = connection.execute(text("SELECT column_name FROM table_name WHERE condition"))
+
+# Fetch the result and assign it to a variable
+row = result.fetchone()  # Fetch one row
+if row:
+    variable_name = row['column_name']  # Access the column by name
+    print(variable_name)
+"""
