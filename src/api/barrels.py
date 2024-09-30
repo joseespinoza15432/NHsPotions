@@ -6,11 +6,6 @@ import sqlalchemy
 from src import database as db
 
 
-"""with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT * FROM Barrel"))
-        for row in result:
-            print(row)
-"""
 router = APIRouter(
     prefix="/barrels",
     tags=["barrels"],
@@ -29,7 +24,9 @@ class Barrel(BaseModel):
 @router.post("/deliver/{order_id}")
 def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
     """ """
-    
+    with db.engine.begin() as connection:
+        result = connection.execute(sqlalchemy.text("UPDATE global_inventory SET num_green_potions = num_green_potions + 1"))
+
     print(f"barrels delievered: {barrels_delivered} order_id: {order_id}")
 
     return "OK"
@@ -38,16 +35,22 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
 @router.post("/plan")
 def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     """ """
+    
+    
+
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT num_green_potions, num_green_ml, gold, FROM global_inventory, WHERE num_green_potions > 10"))
+        result = connection.execute(sqlalchemy.text("SELECT num_green_potions FROM global_inventory, WHERE num_green_potions < 10"))
         
-        
+    greenpotioninventory = result = connection.execute(sqlalchemy.text("SELECT num_green_potions FROM global_inventory"))
+
+    
     print(wholesale_catalog)
 
-    return [
-        {
-            "sku": "SMALL_GREEN_BARREL",
-            "quantity": 1,
-        }
-    ]
+    if greenpotioninventory < 10:
+        return [
+            {
+                "sku": "SMALL_GREEN_BARREL",
+                "quantity": 1,
+            }
+        ]
 
