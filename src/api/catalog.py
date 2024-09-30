@@ -3,9 +3,6 @@ from fastapi import APIRouter
 import sqlalchemy
 from src import database as db
 
-#with db.engine.begin() as connection:
-#        result = connection.execute(sqlalchemy.text(sql_to_execute))
-
 router = APIRouter()
 
 
@@ -17,12 +14,16 @@ def get_catalog():
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text("SELECT num_green_potions FROM global_inventory"))
 
+    """
     row = result.fetchone()
 
     if row:
         greenpotioninventory = row['num_green_potions']
         print(greenpotioninventory)
-        
+    """
+
+    greenpotioninventory = result
+     
     if greenpotioninventory > 0:
         return [
                 {
