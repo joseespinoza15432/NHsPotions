@@ -49,13 +49,13 @@ def get_bottle_plan():
 
     greenpotionml = result"""
 
-    if result > 0:
+    if result.num_green_ml > 0:
         return [
-                {
-                    "potion_type": [0, 100, 0, 0],
-                    "quantity": 5,
-                }
-            ]
+            {
+                "potion_type": [0, 100, 0, 0],
+                "quantity": 5,
+            }
+        ]
 
 if __name__ == "__main__":
     print(get_bottle_plan())
