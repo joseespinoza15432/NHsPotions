@@ -23,8 +23,8 @@ def get_catalog():
     
 
     greenpotioninventory = result"""
-     
-    if result.greenpotioninventory > 0:
+    row = result.fetchone()
+    if row and row['num_green_potions'] > 0:
         return [
             {
                 "sku": "green_POTION_0",

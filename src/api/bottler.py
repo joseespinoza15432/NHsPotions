@@ -49,7 +49,8 @@ def get_bottle_plan():
 
     greenpotionml = result"""
 
-    if result.num_green_ml > 0:
+    row = result.fetchone()
+    if row and row['num_green_ml'] < 10:
         return [
             {
                 "potion_type": [0, 100, 0, 0],
