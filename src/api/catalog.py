@@ -20,11 +20,11 @@ def get_catalog():
     if row:
         greenpotioninventory = row['num_green_potions']
         print(greenpotioninventory)
-    """
+    
 
-    greenpotioninventory = result
+    greenpotioninventory = result"""
      
-    if greenpotioninventory > 0:
+    if result > 0:
         return [
                 {
                     "sku": "green_POTION_0",

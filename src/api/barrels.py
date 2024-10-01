@@ -45,11 +45,11 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     if row:
         greenpotioninventory = row['num_green_potions']
         print(greenpotioninventory)
-    """
-
-    greenpotioninventory = result
     
-    if greenpotioninventory < 10:
+
+    greenpotioninventory = result"""
+    
+    if result < 10:
         return [
             {
                 "sku": "SMALL_GREEN_BARREL",

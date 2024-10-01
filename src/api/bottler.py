@@ -45,11 +45,11 @@ def get_bottle_plan():
     if row:
         greenpotionml = row['num_green_ml']
         print(greenpotionml)
-    """
+    
 
-    greenpotionml = result
+    greenpotionml = result"""
 
-    if greenpotionml > 0:
+    if result > 0:
         return [
                 {
                     "potion_type": [0, 100, 0, 0],
