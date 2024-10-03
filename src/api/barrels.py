@@ -23,7 +23,7 @@ class Barrel(BaseModel):
 
 @router.post("/deliver/{order_id}")
 def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
-    """ """
+    
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text("UPDATE global_inventory SET num_green_potions = num_green_potions + 1"))
 
@@ -34,27 +34,27 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
 # Gets called once a day
 @router.post("/plan")
 def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
-    """ """
+    
     print(wholesale_catalog)
 
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT num_green_potions FROM global_inventory"))
+        result = connection.execute(sqlalchemy.text("SELECT num_green_potions, gold FROM global_inventory")).fetchone()
 
-    """
-    if row:
-        greenpotioninventory = row['num_green_potions']
-        print(greenpotioninventory)
     
-
-    greenpotioninventory = result
-    if result.num_green_potions < 10:
-    """
-    
-    row = result.fetchone()
-    if row and row['num_green_potions'] < 10:
+    if 'num_green_potion' in result < 10 and 'gold' in result > Barrel.price and Barrel.potion_type == [0,100,0,0]:
         return [
             {
                 "sku": "SMALL_GREEN_BARREL",
                 "quantity": 1,
             }
         ]
+    
+
+    """row = result.fetchone()
+    if row and row['num_green_potions'] < 10:
+        return [
+            {
+                "sku": "SMALL_GREEN_BARREL",
+                "quantity": 1,
+            }
+        ]"""

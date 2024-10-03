@@ -19,7 +19,7 @@ class PotionInventory(BaseModel):
 
 @router.post("/deliver/{order_id}")
 def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int):
-    """ """
+    
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text("UPDATE global_inventory SET num_green_ml = num_green_ml + 1"))
 
@@ -40,21 +40,14 @@ def get_bottle_plan():
 
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text("SELECT num_green_ml FROM global_inventory"))
-    """
-    row = result.fetchone()
-    if row:
-        greenpotionml = row['num_green_ml']
-        print(greenpotionml)
     
-
-    greenpotionml = result"""
 
     row = result.fetchone()
     if row and row['num_green_ml'] > 0:
         return [
             {
                 "potion_type": [0, 100, 0, 0],
-                "quantity": 5,
+                "quantity": 1,
             }
         ]
 

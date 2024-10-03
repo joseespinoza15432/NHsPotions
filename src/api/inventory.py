@@ -12,7 +12,9 @@ router = APIRouter(
 @router.get("/audit")
 def get_inventory():
     """ """
-    
+    """
+    return database values
+    """
     return {"number_of_potions": 0, "ml_in_barrels": 0, "gold": 0}
 
 # Gets called once a day
