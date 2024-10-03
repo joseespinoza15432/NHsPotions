@@ -16,13 +16,15 @@ def get_catalog():
 
     
     row = result.fetchone()
-    if row and row['num_green_potions'] > 0:
+    numpotions = row['num_green_potions']
+
+    if numpotions > 0:
         return [
             {
                 "sku": "green_POTION_0",
                 "name": "green potion",
                 "quantity": 1,
-                "price": 50,
+                "price": 30,
                 "potion_type": [0, 100, 0, 0],
             }
         ]
