@@ -45,14 +45,33 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     numberofpotions = result['num_green_potion']
     amountofgold = result['gold']
 
-    greenpotion = wholesale_catalog[0]
+    #greenpotion = wholesale_catalog[0]
 
-    if numberofpotions < 10 and amountofgold > greenpotion.price:
+    purchase_plan = []
+
+    for barrel in wholesale_catalog:
+        if barrel.potion_type == [0, 100, 0, 0]:
+            if amountofgold >= barrel.price:
+                maxamount = amountofgold // barrel.price
+                return [
+                            {
+                                "sku": "SMALL_GREEN_BARREL",
+                                "quantity": maxamount,
+                            }
+                ]
+
+        
+
+    """
+    if numberofpotions < 10 and amountofgold > greenpotion.price and greenpotion.potion_type[0, 100, 0, 0]:
         maxamount = amountofgold // greenpotion.price
         return [
             {
                 "sku": "SMALL_GREEN_BARREL",
                 "quantity": maxamount,
             }
-        ]
+        ]"""
     
+
+#in barrels/plan, you need to loop through the list of barrels given in wholesale catalog and buy barrels of the color you need and within an affordable price, 
+# right now you just look at the first barrel price, not even the color of that barrel, you need to loop though that lis, check if it green, check if you can afford, then plan to buy
