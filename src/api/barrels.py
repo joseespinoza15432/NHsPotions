@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from src.api import auth
-
 import sqlalchemy
 from src import database as db
 
@@ -29,7 +28,7 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
             result = connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = gold - :price, num_green_ml = num_green_ml + :ml_per_barrel"), {"price": barrel.price, "ml_per_barrel": barrel.ml_per_barrel})
 
     print(f"barrels delievered: {barrels_delivered} order_id: {order_id}")
-
+        
     return "OK"
 
 # Gets called once a day
@@ -49,7 +48,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     greenpotion = wholesale_catalog[0]
 
 
-    if numberofpotions < 10 and amountofgold > greenpotion.price and greenpotion.potion_type == [0, 100, 0, 0]:
+    if numberofpotions < 10 and amountofgold > greenpotion.price:
         maxamount = amountofgold // greenpotion.price
         return [
             {
