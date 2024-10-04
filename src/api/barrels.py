@@ -53,8 +53,6 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     numberofpotions = result['num_green_potion']
     amountofgold = result['gold']
 
-    purchase_plan = []
-
     for barrel in wholesale_catalog:
         if barrel.potion_type == [0, 100, 0, 0]:
             if amountofgold >= barrel.price:
