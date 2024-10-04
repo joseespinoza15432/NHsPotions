@@ -25,7 +25,7 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
     
     with db.engine.begin() as connection:
         for barrel in barrels_delivered:    
-            result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.ml_per_barrel}, num_green_ml = num_green_ml + {barrel.price}"))
+            result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_green_ml = num_green_ml + {barrel.ml_per_barrel}"))
 
     """
     with db.engine.begin() as connection:
@@ -62,17 +62,23 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                             }
                 ]
 
-        
 
     """
-    if numberofpotions < 10 and amountofgold > greenpotion.price and greenpotion.potion_type[0, 100, 0, 0]:
-        maxamount = amountofgold // greenpotion.price
-        return [
-            {
-                "sku": "SMALL_GREEN_BARREL",
-                "quantity": maxamount,
-            }
-        ]"""
+
+
+    for barrel in wholesale_catalog:
+        if barrel.potion_type == [0, 100, 0, 0]:
+            if amountofgold >= barrel.price:
+                maxamount = amountofgold // barrel.price
+                return [
+                            {
+                                "sku": "SMALL_GREEN_BARREL",
+                                "quantity": maxamount,
+                            }
+                ]
+
+    """
+
     
 
 #in barrels/plan, you need to loop through the list of barrels given in wholesale catalog and buy barrels of the color you need and within an affordable price, 
