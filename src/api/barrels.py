@@ -22,10 +22,18 @@ class Barrel(BaseModel):
 
 @router.post("/deliver/{order_id}")
 def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
+    
+    
 
     with db.engine.begin() as connection:
+        for barrel in barrels_delivered:    
+            result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.ml_per_barrel}, num_green_ml = num_green_ml + {barrel.price}"))
+
+    """
+    with db.engine.begin() as connection:
         for barrel in barrels_delivered:
-            result = connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = gold - :price, num_green_ml = num_green_ml + :ml_per_barrel"), {"price": barrel.price, "ml_per_barrel": barrel.ml_per_barrel})
+            result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - :price, num_green_ml = num_green_ml + :ml_per_barrel"), {"price": barrel.price, "ml_per_barrel": barrel.ml_per_barrel})
+    """
 
     print(f"barrels delievered: {barrels_delivered} order_id: {order_id}")
         
@@ -44,8 +52,6 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
 
     numberofpotions = result['num_green_potion']
     amountofgold = result['gold']
-
-    #greenpotion = wholesale_catalog[0]
 
     purchase_plan = []
 
