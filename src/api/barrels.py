@@ -45,12 +45,10 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
 
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text("SELECT num_green_potions, gold FROM global_inventory")).fetchone()
+        numberofpotions = result['num_green_potion']
+        amountofgold = result['gold']
+
     
-    #row = result.fetchone()
-
-    numberofpotions = result['num_green_potion']
-    amountofgold = result['gold']
-
     for barrel in wholesale_catalog:
         if barrel.potion_type == [0, 100, 0, 0]:
             if amountofgold >= barrel.price:
@@ -80,6 +78,3 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     """
 
     
-
-#in barrels/plan, you need to loop through the list of barrels given in wholesale catalog and buy barrels of the color you need and within an affordable price, 
-# right now you just look at the first barrel price, not even the color of that barrel, you need to loop though that lis, check if it green, check if you can afford, then plan to buy
