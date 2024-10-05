@@ -42,9 +42,10 @@ def get_bottle_plan():
 
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text("SELECT num_green_ml FROM global_inventory")).fetchone()
-    
+        amountofgreenml = result.num_green_ml
+
     #row = result.fetchone()
-    amountofgreenml = result['num_green_ml']
+    
 
     if amountofgreenml > 0:
         return [
@@ -53,6 +54,7 @@ def get_bottle_plan():
                 "quantity": amountofgreenml // 100,
             }
         ]
+    return []
 
 if __name__ == "__main__":
     print(get_bottle_plan())
