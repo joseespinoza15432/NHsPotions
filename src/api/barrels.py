@@ -51,11 +51,14 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         for barrel in wholesale_catalog:
             if numberofpotions < 10:
                 if barrel.potion_type == [0,100,0,0]:
-                    maxamount = amountofgold // barrel.price
+
+                    max_afford = amountofgold // barrel.price
+                    quantity_of_barrels = min(max_afford, barrel.quantity) 
+
                     return [
                                 {
                                     "sku": barrel.sku,
-                                    "quantity": maxamount,
+                                    "quantity": quantity_of_barrels,
                                 }
                     ]
     return[]
