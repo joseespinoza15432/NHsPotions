@@ -22,8 +22,13 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
     
     with db.engine.begin() as connection:
         for potion in potions_delivered:
-            potion_ml_used = potion.quantity * 100
-            result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET num_green_potions = num_green_potions + {potion.quantity}, num_green_ml = num_green_ml - {potion_ml_used}"))
+
+            if potion.potion_type == [100, 0, 0, 0]:
+                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET num_red_potions = num_red_potions + {potion.quantity}, num_red_ml = num_red_ml - {potion.quantity*100}"))
+            if potion.potion_type == [0, 100, 0, 0]:
+                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET num_green_potions = num_green_potions + {potion.quantity}, num_green_ml = num_green_ml - {potion.quantity*100}"))
+            if potion.potion_type == [0, 0, 100, 0]:
+                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET num_blue_potions = num_blue_potions + {potion.quantity}, num_blue_ml = num_blue_ml - {potion.quantity*100}"))
 
     print(f"potions delievered: {potions_delivered} order_id: {order_id}")
 
@@ -41,19 +46,29 @@ def get_bottle_plan():
     # Initial logic: bottle all barrels into red potions.
 
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT num_green_ml FROM global_inventory")).fetchone()
-        amountofgreenml = result.num_green_ml
-
-    #row = result.fetchone()
-    
-
-    if amountofgreenml > 0:
-        return [
-            {
-                "potion_type": [0, 100, 0, 0],
-                "quantity": amountofgreenml // 100,
-            }
-        ]
+        result = connection.execute(sqlalchemy.text("SELECT num_red_ml, num_green_ml, num_blue_ml FROM global_inventory")).fetchone()
+        
+        if result.num_red_ml > 100:
+            return [
+                {
+                    "potion_type": [100, 0, 0, 0],
+                    "quantity": result.num_red_ml // 100,
+                }
+            ]
+        if result.num_green_ml > 100:
+            return [
+                {
+                    "potion_type": [0, 100, 0, 0],
+                    "quantity": result.num_green_ml // 100,
+                }
+            ]
+        if result.num_blue_ml > 100:
+            return [
+                {
+                    "potion_type": [0, 0, 100, 0],
+                    "quantity": result.num_blue_ml // 100,
+                }
+            ]
     return []
 
 if __name__ == "__main__":

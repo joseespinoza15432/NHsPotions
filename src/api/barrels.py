@@ -25,13 +25,13 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
     
     with db.engine.begin() as connection:
         for barrel in barrels_delivered:    
-            result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_green_ml = num_green_ml + {barrel.ml_per_barrel}"))
+            if barrel.potion_type == [100, 0, 0, 0]: 
+                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_red_ml = num_red_ml + {barrel.ml_per_barrel}"))
+            elif barrel.potion_type == [0, 100, 0, 0]: 
+                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_green_ml = num_green_ml + {barrel.ml_per_barrel}"))
+            elif barrel.potion_type == [0, 0, 100, 0]: 
+                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_blue_ml = num_blue_ml + {barrel.ml_per_barrel}"))
 
-    """
-    with db.engine.begin() as connection:
-        for barrel in barrels_delivered:
-            result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - :price, num_green_ml = num_green_ml + :ml_per_barrel"), {"price": barrel.price, "ml_per_barrel": barrel.ml_per_barrel})
-    """
 
     print(f"barrels delievered: {barrels_delivered} order_id: {order_id}")
         
@@ -44,23 +44,38 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     print(wholesale_catalog)
 
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT num_green_potions, gold FROM global_inventory")).fetchone()
-        numberofpotions = result.num_green_potions
-        amountofgold = result.gold
+        result = connection.execute(sqlalchemy.text("SELECT num_red_potions, num_green_potions, num_blue_potions, gold FROM global_inventory")).fetchone()
 
         for barrel in wholesale_catalog:
-            if numberofpotions < 10:
-                if barrel.potion_type == [0,100,0,0]:
 
-                    max_afford = amountofgold // barrel.price
-                    quantity_of_barrels = min(max_afford, barrel.quantity) 
+            max_afford = result.gold // barrel.price
+            quantity_of_barrels = min(max_afford, barrel.quantity)
 
+            if barrel.potion_type == [100, 0, 0, 0]: 
+                if result.num_red_potions <= result.num_green_potions and result.num_red_potions <= result.num_blue_potions:
                     return [
                                 {
                                     "sku": barrel.sku,
                                     "quantity": quantity_of_barrels,
                                 }
                     ]
+            if barrel.potion_type == [0, 100, 0, 0]:
+                if result.num_green_potions <= result.num_red_potions and result.num_green_potions <= result.num_blue_potions:
+                    return [
+                                {
+                                    "sku": barrel.sku,
+                                    "quantity": quantity_of_barrels,
+                                }
+                    ]
+            if barrel.potion_type == [0, 0, 100, 0]:
+                if result.num_blue_potions <= result.num_red_potions and result.num_blue_potions <= result.num_green_potions:
+                    return [
+                                {
+                                    "sku": barrel.sku,
+                                    "quantity": quantity_of_barrels,
+                                }
+                    ]
+                
     return[]
 
     """

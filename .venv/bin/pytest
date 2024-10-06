@@ -1,4 +1,4 @@
-#!/home/codespace/NHsPotions/.venv/bin/python
+#!/Users/joseespinoza/Documents/GitHub/NHsPotions/.venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
