@@ -47,18 +47,16 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         result = connection.execute(sqlalchemy.text("SELECT num_green_potions, gold FROM global_inventory")).fetchone()
         numberofpotions = result.num_green_potions
         amountofgold = result.gold
-
-    for barrel in wholesale_catalog:
-            if barrel.potion_type == [0, 100, 0, 0]:
-                if amountofgold >= barrel.price:
-                    maxamount = amountofgold // barrel.price
-                    return [
-                                {
-                                    "sku": "SMALL_GREEN_BARREL",
-                                    "potion_type": [0,100,0,0],
-                                    "quantity": maxamount,
-                                }
-                    ]
+        for barrel in wholesale_catalog:
+            if numberofpotions < 10:
+                #maxamount = amountofgold // barrel.price
+                return [
+                            {
+                                "sku": "SMALL_GREEN_BARREL",
+                                "potion_type": [0,100,0,0],
+                                "quantity": 1,
+                            }
+                ]
     return[]
 
     """
