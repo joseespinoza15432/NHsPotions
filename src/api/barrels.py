@@ -25,11 +25,11 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
     
     with db.engine.begin() as connection:
         for barrel in barrels_delivered:    
-            if barrel.potion_type == [100, 0, 0, 0]: 
+            if "red" in barrel.sku.lower(): 
                 result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_red_ml = num_red_ml + {barrel.ml_per_barrel}"))
-            elif barrel.potion_type == [0, 100, 0, 0]: 
+            if "green" in barrel.sku.lower():  
                 result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_green_ml = num_green_ml + {barrel.ml_per_barrel}"))
-            elif barrel.potion_type == [0, 0, 100, 0]: 
+            if "blue" in barrel.sku.lower():  
                 result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_blue_ml = num_blue_ml + {barrel.ml_per_barrel}"))
 
 
@@ -43,55 +43,60 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     
     print(wholesale_catalog)
 
+    barrel_plan = []
+
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text("SELECT num_red_potions, num_green_potions, num_blue_potions, gold FROM global_inventory")).fetchone()
 
         for barrel in wholesale_catalog:
-
+            
             max_afford = result.gold // barrel.price
             quantity_of_barrels = min(max_afford, barrel.quantity)
+            gold_in_instance = result.gold
 
-            if barrel.potion_type == [100, 0, 0, 0]: 
-                if result.num_red_potions <= result.num_green_potions and result.num_red_potions <= result.num_blue_potions:
-                    return [
-                                {
-                                    "sku": barrel.sku,
-                                    "quantity": quantity_of_barrels,
-                                }
-                    ]
-            if barrel.potion_type == [0, 100, 0, 0]:
-                if result.num_green_potions <= result.num_red_potions and result.num_green_potions <= result.num_blue_potions:
-                    return [
-                                {
-                                    "sku": barrel.sku,
-                                    "quantity": quantity_of_barrels,
-                                }
-                    ]
-            if barrel.potion_type == [0, 0, 100, 0]:
-                if result.num_blue_potions <= result.num_red_potions and result.num_blue_potions <= result.num_green_potions:
-                    return [
-                                {
-                                    "sku": barrel.sku,
-                                    "quantity": quantity_of_barrels,
-                                }
-                    ]
-                
-    return[]
-
-    """
-
-
-    for barrel in wholesale_catalog:
-        if barrel.potion_type == [0, 100, 0, 0]:
-            if amountofgold >= barrel.price:
-                maxamount = amountofgold // barrel.price
-                return [
+            #while True:
+            #if barrel.potion_type == [100, 0, 0, 0]: 
+            #if result.num_red_potions <= result.num_green_potions and result.num_red_potions <= result.num_blue_potions:
+            if "red" in barrel.sku.lower():
+                if result.num_red_potions < 10:
+                    if gold_in_instance <= barrel.price:
+                        barrel_plan.append(
                             {
-                                "sku": "SMALL_GREEN_BARREL",
-                                "quantity": maxamount,
+                                "sku": barrel.sku,
+                                "quantity": 1,
                             }
-                ]
+                        )
+                        gold_in_instance -= barrel.price
 
-    """
+            #if barrel.potion_type == [0, 100, 0, 0]:
+            #if result.num_green_potions <= result.num_red_potions and result.num_green_potions <= result.num_blue_potions:
+            if "green" in barrel.sku.lower():
+                if result.num_green_potions < 10:
+                    if gold_in_instance <= barrel.price:
+                        barrel_plan.append(
+                            {
+                                "sku": barrel.sku,
+                                "quantity": 1,
+                            }
+                        )
+                        gold_in_instance -= barrel.price
+                
+            #if barrel.potion_type == [0, 0, 100, 0]:
+            #if result.num_blue_potions <= result.num_red_potions and result.num_blue_potions <= result.num_green_potions:
+            if "blue" in barrel.sku.lower():
+                if result.num_blue_potions < 10:
+                    if gold_in_instance <= barrel.price:
+                        barrel.plan.append(
+                                    {
+                                        "sku": barrel.sku,
+                                        "quantity": 1,
+                                    }
+                        )
+                        gold_in_instance -= barrel.price
 
+            #if "red" in barrel.sku.lower() <= barrel.price or "green" in barrel.sku.lower() <= barrel.price or "blue" in barrel.sku.lower() <= barrel.price:
+            #    break
+    return barrel_plan
+
+   
     
