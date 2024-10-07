@@ -24,11 +24,11 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
         for potion in potions_delivered:
 
             if potion.potion_type == [100, 0, 0, 0]:
-                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET num_red_potions = num_red_potions + {potion.quantity}, num_red_ml = num_red_ml - {potion.quantity*100}"))
+                connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET num_red_potions = num_red_potions + {potion.quantity}, num_red_ml = num_red_ml - {potion.quantity*100}"))
             if potion.potion_type == [0, 100, 0, 0]:
-                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET num_green_potions = num_green_potions + {potion.quantity}, num_green_ml = num_green_ml - {potion.quantity*100}"))
+                connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET num_green_potions = num_green_potions + {potion.quantity}, num_green_ml = num_green_ml - {potion.quantity*100}"))
             if potion.potion_type == [0, 0, 100, 0]:
-                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET num_blue_potions = num_blue_potions + {potion.quantity}, num_blue_ml = num_blue_ml - {potion.quantity*100}"))
+                connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET num_blue_potions = num_blue_potions + {potion.quantity}, num_blue_ml = num_blue_ml - {potion.quantity*100}"))
 
     print(f"potions delievered: {potions_delivered} order_id: {order_id}")
 

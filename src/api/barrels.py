@@ -23,17 +23,16 @@ class Barrel(BaseModel):
 @router.post("/deliver/{order_id}")
 def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
     
+    print(f"barrels delievered: {barrels_delivered} order_id: {order_id}")
+
     with db.engine.begin() as connection:
         for barrel in barrels_delivered:    
             if "red" in barrel.sku.lower(): 
-                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_red_ml = num_red_ml + {barrel.ml_per_barrel}"))
+                connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_red_ml = num_red_ml + {barrel.ml_per_barrel}"))
             if "green" in barrel.sku.lower():  
-                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_green_ml = num_green_ml + {barrel.ml_per_barrel}"))
+                connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_green_ml = num_green_ml + {barrel.ml_per_barrel}"))
             if "blue" in barrel.sku.lower():  
-                result = connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_blue_ml = num_blue_ml + {barrel.ml_per_barrel}"))
-
-
-    print(f"barrels delievered: {barrels_delivered} order_id: {order_id}")
+                connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_blue_ml = num_blue_ml + {barrel.ml_per_barrel}"))
         
     return "OK"
 
