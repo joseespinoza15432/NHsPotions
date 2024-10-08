@@ -121,14 +121,35 @@ class CartCheckout(BaseModel):
 def checkout(cart_id: int, cart_checkout: CartCheckout):
     """ """
     cart_in_instance = car_dict[car_id]
-    cart_cost = 0
-    
+    cart_plan = []
+
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT num_red_potions, num_green_potions, num_blue_potions FROM global_inventory")).fetchone()
+        result = connection.execute(sqlalchemy.text("SELECT num_red_potions, num_green_potions, num_blue_potions, gold FROM global_inventory")).fetchone()
+
+        track_red_potions = result.num_red_potions
+        track_green_potions = result.num_green_potions
+        track_blue_potions = result.num_blue_potions
+        instance_gold = result.gold
+
+        for sku, quantity in cart_in_instance.shop():
+            
+            if "red" in sku.lower():
+                if result.num_red_potions >= quantity:
+                    track_red_potions -= quantity
+                    instance_gold += 50
+
+            if "green" in sku.lower():
+                if result.num_red_potions >= quantity:
+                    track_green_potions -= quantity
+                    instance_gold += 50
+
+            if "blue" in sku.lower():
+                if result.num_red_potions >= quantity:
+                    track_blue_potions -= quantity        
+                    instance_gold += 50
+
 
         
+    connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold + {instance_gold}, num_red_potions = num_red_potions - {track_red_potions}, num_green_potions = num_green_potions - {track_green_potions}, num_blue_potions = num_blue_potions - {track_blue_potions}"))
 
-
-        connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = gold + 50, num_green_potions = num_green_potions - 1"))
-
-    return {"total_potions_bought": 1, "total_gold_paid": 50}
+    return {"total_potions_bought": quantity, "total_gold_paid": instance_gold}
