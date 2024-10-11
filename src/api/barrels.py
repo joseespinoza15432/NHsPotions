@@ -56,7 +56,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
             #while True:
             #if barrel.potion_type == [100, 0, 0, 0]: 
             #if result.num_red_potions <= result.num_green_potions and result.num_red_potions <= result.num_blue_potions:
-            if "small_red" in barrel.sku.lower():
+            if "mini_red" in barrel.sku.lower():
                 if result.num_red_potions < 10:
                     if gold_in_instance > barrel.price:
                         barrel_plan.append(
@@ -69,7 +69,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
 
             #if barrel.potion_type == [0, 100, 0, 0]:
             #if result.num_green_potions <= result.num_red_potions and result.num_green_potions <= result.num_blue_potions:
-            if "small_green" in barrel.sku.lower():
+            if "mini_green" in barrel.sku.lower():
                 if result.num_green_potions < 10:
                     if gold_in_instance > barrel.price:
                         barrel_plan.append(
@@ -82,7 +82,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                 
             #if barrel.potion_type == [0, 0, 100, 0]:
             #if result.num_blue_potions <= result.num_red_potions and result.num_blue_potions <= result.num_green_potions:
-            if "small_blue" in barrel.sku.lower():
+            if "mini_blue" in barrel.sku.lower():
                 if result.num_blue_potions < 10:
                     if gold_in_instance > barrel.price:
                         barrel_plan.append(
