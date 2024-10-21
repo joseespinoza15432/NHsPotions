@@ -26,14 +26,30 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
     print(f"barrels delievered: {barrels_delivered} order_id: {order_id}")
 
     with db.engine.begin() as connection:
-        for barrel in barrels_delivered:    
-            if "red" in barrel.sku.lower(): 
-                connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_red_ml = num_red_ml + {barrel.ml_per_barrel}"))
-            if "green" in barrel.sku.lower():  
-                connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_green_ml = num_green_ml + {barrel.ml_per_barrel}"))
-            if "blue" in barrel.sku.lower():  
-                connection.execute(sqlalchemy.text(f"UPDATE global_inventory SET gold = gold - {barrel.price}, num_blue_ml = num_blue_ml + {barrel.ml_per_barrel}"))
-        
+        result = connection.execute(sqlalchemy.text("SELECT gold, num_red_ml, num_green_ml, num_blue_ml, num_dark_ml FROM global_inventory")).first()
+
+        red_ml = result.num_red_ml
+        green_ml = result.num_green_ml
+        blue_ml = result.num_blue_ml
+        dark_ml = result.num_dark_ml
+        gold_in_instance = result.gold
+
+        for barrel in barrels_delivered:
+            if barrel.potion_type == [1, 0, 0, 0]:
+                red_ml += barrel.ml_per_barrel * barrel.quantity
+                gold_in_instance -= barrel.price * barrel.quantity
+            if barrel.potion_type == [0, 1, 0, 0]:
+                green_ml += barrel.ml_per_barrel * barrel.quantity
+                gold_in_instance -= barrel.price * barrel.quantity
+            if barrel.potion_type == [0, 0, 1, 0]:
+                blue_ml += barrel.ml_per_barrel * barrel.quantity
+                gold_in_instance -= barrel.price * barrel.quantity
+            if barrel.potion_type == [0, 0, 0, 1]:
+                dark_ml += barrel.ml_per_barrel * barrel.quantity
+                gold_in_instance -= barrel.price * barrel.quantity
+
+        connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = :g, num_red_ml = :rml, num_green_ml = :gml, num_blue_ml = :bml, num_dark_ml = :dml"), {"g": gold_in_instance, "rml" : red_ml, "gml" : green_ml, "bml" : blue_ml, "dml" : dark_ml})
+
     return "OK"
 
 # Gets called once a day
@@ -45,55 +61,44 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     barrel_plan = []
 
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT num_red_potions, num_green_potions, num_blue_potions, gold FROM global_inventory")).fetchone()
+        result = connection.execute(sqlalchemy.text("SELECT num_red_ml, num_green_ml, num_blue_ml, num_dark_ml, gold FROM global_inventory")).first()
 
-        for barrel in wholesale_catalog:
-            
-            max_afford = result.gold // barrel.price
-            quantity_of_barrels = min(max_afford, barrel.quantity)
-            gold_in_instance = result.gold
+        red_ml = result.num_red_ml
+        green_ml = result.num_green_ml
+        blue_ml = result.num_blue_ml
+        dark_ml = result.num_dark_ml
+        gold_in_instance = result.gold
 
-            #while True:
-            #if barrel.potion_type == [100, 0, 0, 0]: 
-            #if result.num_red_potions <= result.num_green_potions and result.num_red_potions <= result.num_blue_potions:
-            if "mini_red" in barrel.sku.lower():
-                if result.num_red_potions < 10:
-                    if gold_in_instance > barrel.price:
+        potion_levels = [
+            {"type": 1, "ml": red_ml},
+            {"type": 2, "ml": green_ml},
+            {"type": 3, "ml": blue_ml},
+            {"type": 4, "ml": dark_ml}
+        ]
+
+        potion_levels.sort(key = lambda x: x["ml"])
+
+        for potion in potion_levels:
+            potion_type = potion["type"]
+
+            for barrel in wholesale_catalog:
+                if barrel.potion_type[potion_type - 1] == 1:
+                    max_afford = gold_in_instance // barrel.price
+                    quantity_of_barrels = min(max_afford, barrel.quantity)
+
+                    if quantity_of_barrels > 0:
                         barrel_plan.append(
                             {
                                 "sku": barrel.sku,
-                                "quantity": 1,
+                                "quantity": quantity_of_barrels
                             }
                         )
-                        gold_in_instance -= barrel.price
+                        gold_in_instance -= barrel.price * quantity_of_barrels
 
-            #if barrel.potion_type == [0, 100, 0, 0]:
-            #if result.num_green_potions <= result.num_red_potions and result.num_green_potions <= result.num_blue_potions:
-            if "mini_green" in barrel.sku.lower():
-                if result.num_green_potions < 10:
-                    if gold_in_instance > barrel.price:
-                        barrel_plan.append(
-                            {
-                                "sku": barrel.sku,
-                                "quantity": 1,
-                            }
-                        )
-                        gold_in_instance -= barrel.price
-                
-            #if barrel.potion_type == [0, 0, 100, 0]:
-            #if result.num_blue_potions <= result.num_red_potions and result.num_blue_potions <= result.num_green_potions:
-            if "mini_blue" in barrel.sku.lower():
-                if result.num_blue_potions < 10:
-                    if gold_in_instance > barrel.price:
-                        barrel_plan.append(
-                                    {
-                                        "sku": barrel.sku,
-                                        "quantity": 1,
-                                    }
-                        )
-                        gold_in_instance -= barrel.price
-
-            #if "red" in barrel.sku.lower() <= barrel.price or "green" in barrel.sku.lower() <= barrel.price or "blue" in barrel.sku.lower() <= barrel.price:
-            #    break
+                    if gold_in_instance <= 0:
+                        break
+            if gold_in_instance <= 0:
+                break
+        
     return barrel_plan
     
