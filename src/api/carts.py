@@ -5,10 +5,6 @@ from enum import Enum
 import sqlalchemy
 from src import database as db
 
-car_id = 0
-car_dict = {}
-
-
 router = APIRouter(
     prefix="/carts",
     tags=["cart"],

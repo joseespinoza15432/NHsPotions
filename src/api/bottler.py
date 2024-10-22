@@ -23,6 +23,7 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
 
         result = connection.execute(sqlalchemy.text("SELECT num_red_ml, num_green_ml, num_blue_ml, num_dark_ml FROM global_inventory")).first()
         current_ml = [result.num_red_ml, result.num_green_ml, result.num_blue_ml, result.num_dark_ml]
+       
 
         for potion in potions_delivered:
             
@@ -33,15 +34,21 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
 
             connection.execute(sqlalchemy.text("UPDATE global_inventory SET num_red_ml = :rml, num_green_ml = :gml, num_blue_ml = :bml, num_dark_ml = :dml"), {"rml" : current_ml[0], "gml" : current_ml[1], "bml" : current_ml[2], "dml" : current_ml[3]})
 
-            result = connection.execute(sqlalchemy.text("SELECT potion_id, potion_quantity FROM custom_potions WHERE potion_type_red = :rml AND potion_type_green = :gml AND potion_type_blue = :bml AND potion_type_dark = :dml"),  {"rml": potion.potion_type[0], "gml": potion.potion_type[1], "bml": potion.potion_type[2], "dml": potion.potion_type[3]}).first()
-            
-            if result:
-                new_inventory = result.potion_quantity + potion.quantity
-                connection.execute(sqlalchemy.text("UPDATE custom_potions SET potion_quantity = :inv WHERE potion_id = :pid"), {"inv": new_inventory, "pid": result.potion_id})
-                
-            else:
-                connection.execute(sqlalchemy.text("INSERT INTO custom_potions (potion_type_red, potion_type_green, potion_type_blue, potion_type_dark, potion_quantity, price) VALUES (:rml, :gml, :bml, :dml, :amount, :price) "), {"rml" : potion.potion_type[0], "gml" : potion.potion_type[1], "bml" : potion.potion_type[2], "dml" : potion.potion_type[3], "amount" : potion.quantity, "price" : 50})
+            if potion.potion_type == [100, 0, 0, 0]:  
+                potion_id = 1
+            elif potion.potion_type == [0, 100, 0, 0]:  
+                potion_id = 2
+            elif potion.potion_type == [0, 0, 100, 0]: 
+                potion_id = 3
+            elif potion.potion_type == [0, 0, 0, 100]:  
+                potion_id = 4
+            elif potion.potion_type == [50, 0, 50, 0]:  
+                potion_id = 5
+            elif potion.potion_type == [50, 50, 0, 0]:  
+                potion_id = 6
 
+            connection.execute(sqlalchemy.text("UPDATE potion_inventory SET quantity = quantity + :qty WHERE potion_id = :pid"), {"qty" : potion.quantity, "pid" : potion_id})
+            
     print(f"potions delievered: {potions_delivered} order_id: {order_id}")
 
     return "OK"
@@ -57,31 +64,80 @@ def get_bottle_plan():
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text("SELECT num_red_ml, num_green_ml, num_blue_ml, num_dark_ml FROM global_inventory")).first()
         
-        available_ml = []
-        available_ml.append(result.num_red_ml)
-        available_ml.append(result.num_green_ml)
-        available_ml.append(result.num_blue_ml)
-        available_ml.append(result.num_dark_ml)
+        available_ml = [result.num_red_ml, result.num_green_ml, result.num_blue_ml, result.num_dark_ml]
+
+        yellow_potion = [50, 50, 0, 0]
+        purple_potion = [50, 0, 50, 0]
+        red_potion = [100, 0, 0, 0]
+        green_potion = [0, 100, 0, 0]
+        blue_potion = [0, 0, 100, 0]
+        dark_potion = [0, 0, 0, 100]
 
         while sum(available_ml) >= 100:
-            potion_type = potion_type_creator(available_ml)
 
-            if potion_type:
-                create_potion(potion_type, available_ml)
-
+            if available_ml[0] >= 50 and available_ml[1] >= 50:
                 bottle_plan.append(
                     {
-                        "potion_type": potion_type,
+                        "potion_type": yellow_potion,
                         "quantity": 1
                     }
                 )
+                available_ml[0] -= 50
+                available_ml[1] -= 50
+
+            elif available_ml[0] >= 50 and available_ml[2] >= 50:
+                bottle_plan.append(
+                    {
+                        "potion_type": purple_potion,
+                        "quantity": 1
+                    }
+                )
+                available_ml[0] -= 50
+                available_ml[2] -= 50
+                
+            elif available_ml[0] >= 100:
+                bottle_plan.append(
+                    {
+                        "potion_type": red_potion,
+                        "quantity": 1
+                    }
+                )
+                available_ml[0] -= 100
+
+            elif available_ml[1] >= 100:
+                bottle_plan.append(
+                    {
+                        "potion_type": green_potion,
+                        "quantity": 1
+                    }
+                )
+                available_ml[1] -= 100
+
+            elif available_ml[2] >= 100:
+                bottle_plan.append(
+                    {
+                        "potion_type": blue_potion,
+                        "quantity": 1
+                    }
+                )
+                available_ml[2] -= 100
+
+            elif available_ml[3] >= 100:
+                bottle_plan.append(
+                    {
+                        "potion_type": dark_potion,
+                        "quantity": 1
+                    }
+                )
+                available_ml[3] -= 100
+
             else:
                 print("not enough ml :(")
                 break
 
     return bottle_plan
 
-
+"""
 def potion_type_creator(available_ml):
     total_ml = 100
     potion_type = [0, 0, 0, 0]
@@ -118,7 +174,7 @@ def create_potion(potion_type, available_ml):
     for i in range(4):
         available_ml[i] -= potion_type[i]
     print("Potion Created, updated ml: ", available_ml)
-
+"""
 
 if __name__ == "__main__":
     print(get_bottle_plan())
