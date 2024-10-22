@@ -79,6 +79,7 @@ def post_visits(visit_id: int, customers: list[Customer]):
     """
     Which customers visited the shop today?
     """
+    
     print(customers)
 
     return "OK"

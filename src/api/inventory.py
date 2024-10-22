@@ -23,12 +23,13 @@ def get_inventory():
     total_gold = 0
 
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT num_red_ml, num_green_ml, num_blue_ml, num_dark_ml FROM global_inventory")).first()
-        total_potions = result.num_red_ml + result.num_green_ml + result.num_blue_ml + result.num_dark_ml
+        result = connection.execute(sqlalchemy.text("SELECT gold, num_red_ml, num_green_ml, num_blue_ml, num_dark_ml FROM global_inventory")).first()
+        total_liquid = result.num_red_ml + result.num_green_ml + result.num_blue_ml + result.num_dark_ml
         total_gold = result.gold
-        result = connection.execute(sqlalchemy.text("SELECT potion_id FROM custom_potions")).last()
-        total_potions = result.potion_id
-        
+
+        result = connection.execute(sqlalchemy.text("SELECT quantity FROM potion_inventory")).fetchall()
+        total_potions = sum(row.quantity for row in result)
+
     return {"number_of_potions": total_potions, "ml_in_barrels": total_liquid, "gold": total_gold}
 
 # Gets called once a day
