@@ -128,7 +128,7 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
         
         for item in items:
             instance_potions += item.quantity
-            instance_gold += item.item_total
+            instance_gold += item.line_item_total
 
         
     connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = gold + :ig"), {"ig": instance_gold})
