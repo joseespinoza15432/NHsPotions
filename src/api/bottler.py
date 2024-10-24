@@ -47,7 +47,7 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
             elif potion.potion_type == [50, 50, 0, 0]:  
                 potion_id = 6
 
-            connection.execute(sqlalchemy.text("UPDATE potion_inventory SET quantity = quantity + :qty WHERE potion_id = :pid"), {"qty" : potion.quantity, "pid" : potion_id})
+            connection.execute(sqlalchemy.text("UPDATE potion_inventory SET quantity = quantity + :qty WHERE id = :pid"), {"qty" : potion.quantity, "pid" : potion_id})
             
     print(f"potions delievered: {potions_delivered} order_id: {order_id}")
 

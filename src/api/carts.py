@@ -90,8 +90,10 @@ def create_cart(new_cart: Customer):
     """ """
 
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("INSERT INTO customer_cart (customer_name) VALUES (:name) Returning cart_id"), {"name": new_cart.customer_name})
-        cart_id = result.fetchone()[0]
+        connection.execute(sqlalchemy.text("INSERT INTO customer_information (name, level, class) VALUES (:name, :level, :class) Returning id"), {"name": new_cart.customer_name, "level": new_cart.level, "class": new_cart.character_class})
+        cart_id = connection.execute(sqlalchemy.text("SELECT id FROM customer_information"))
+        connection.execute(sqlalchemy.text("INSERT INTO customer_cart (customer_id) VALUES (:customer_id) RETURNING id"), {"customer_id": cart_id})
+      
 
     return {"cart_id": cart_id}
 
@@ -104,12 +106,11 @@ class CartItem(BaseModel):
 def set_item_quantity(cart_id: int, item_sku: str, cart_item: CartItem):
     """ """
     with db.engine.begin() as connection:
-        potion = connection.execute(sqlalchemy.text("SELECT price FROM potion_inventory WHERE potion_sku = :sku"), {"sku": item_sku}).first()
+        potion = connection.execute(sqlalchemy.text("SELECT id FROM potion_inventory WHERE potion_sku = :sku"), {"sku": item_sku}).first()
 
-        if potion:
-            line_item_total = potion.price * cart_item.quantity
-            connection.execute(sqlalchemy.text("INSERT INTO cart_items (cart_id, potion_sku, quantity, line_item_total) VALUES (:cart_id, :potion_sku, :quantity, :line_item_total)"), {"cart_id": cart_id, "potion_sku": item_sku, "quantity": cart_item.quantity, "line_item_total": line_item_total})
-
+        connection.execute(sqlalchemy.text("INSERT INTO cart_items (cart_id, potion_id, quantity) VALUES (:cid, :pid, :quantity)"), {"cid": cart_id, "pid": potion.id, "quantity": cart_item.quantity})
+       
+       
     return "OK"
 
 
@@ -119,19 +120,38 @@ class CartCheckout(BaseModel):
 @router.post("/{cart_id}/checkout")
 def checkout(cart_id: int, cart_checkout: CartCheckout):
     """ """
+    
+
+
     instance_potions = 0
     instance_gold = 0
     
     with db.engine.begin() as connection:
+        cart = connection.execute(sqlalchemy.text("""SELECT 
+                                              cart_items.quantity,
+                                              potion_inventory.id AS potion_id,
+                                              potion_inventory.price AS potion_price,
+                                              potion_inventory.quantity AS potion_stock
+                                              FROM customer_cart
+                                              JOIN cart_items
+                                              ON customer_cart.id = cart_items.cart_id
+                                              JOIN potion_inventory
+                                              ON cart_items.potion_id = potion_inventory.id
+                                              WHERE customer_cart.id = :cart_id"""), {"cart_id": cart_id}).fetchall()
         
-        items = connection.execute(sqlalchemy.text("SELECT potion_sku, quantity, line_item_total FROM cart_items WHERE cart_id = :cart_id"), {"cart_id": cart_id}).fetchall()
-        
-        for item in items:
+        for item in cart:
             instance_potions += item.quantity
-            instance_gold += item.line_item_total
+            instance_gold += item.quantity * item.potion_price
 
+            new_potion_amount = item.potion_inventory.quantity - item.cart_item.quantity
+
+            connection.execute(sqlalchemy.text("UPDATE potion_inventory SET quantity = quantity - :qty WHERE id = :pid"), {"pid": item.quantity, "pid": item.potion_id})
+            
         
-    connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = gold + :ig"), {"ig": instance_gold})
+        connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = gold - :qty"), {"qty": instance_gold})
+        connection.execute(sqlalchemy.text("UPDATE customer_cart SET payment = :payment WHERE id = :cart_id"), {"payment": cart_checkout.payment,"cart_id": cart_id})
+
+            
         
 
     return {"total_potions_bought": instance_potions, "total_gold_paid": instance_gold}
