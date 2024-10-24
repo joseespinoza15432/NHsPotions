@@ -121,8 +121,6 @@ class CartCheckout(BaseModel):
 def checkout(cart_id: int, cart_checkout: CartCheckout):
     """ """
     
-
-
     instance_potions = 0
     instance_gold = 0
     
@@ -143,12 +141,10 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
             instance_potions += item.quantity
             instance_gold += item.quantity * item.potion_price
 
-            new_potion_amount = item.potion_inventory.quantity - item.cart_item.quantity
-
-            connection.execute(sqlalchemy.text("UPDATE potion_inventory SET quantity = quantity - :qty WHERE id = :pid"), {"pid": item.quantity, "pid": item.potion_id})
+            connection.execute(sqlalchemy.text("UPDATE potion_inventory SET quantity = quantity - :qty WHERE id = :pid"), {"qty": item.quantity, "pid": item.potion_id})
             
         
-        connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = gold - :qty"), {"qty": instance_gold})
+        connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = gold + :qty"), {"qty": instance_gold})
         connection.execute(sqlalchemy.text("UPDATE customer_cart SET payment = :payment WHERE id = :cart_id"), {"payment": cart_checkout.payment,"cart_id": cart_id})
 
             
