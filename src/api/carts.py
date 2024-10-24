@@ -90,10 +90,10 @@ def create_cart(new_cart: Customer):
     """ """
 
     with db.engine.begin() as connection:
-        connection.execute(sqlalchemy.text("INSERT INTO customer_information (name, level, class) VALUES (:name, :level, :class) Returning id"), {"name": new_cart.customer_name, "level": new_cart.level, "class": new_cart.character_class})
-        cart_id = connection.execute(sqlalchemy.text("SELECT id FROM customer_information"))
-        connection.execute(sqlalchemy.text("INSERT INTO customer_cart (customer_id) VALUES (:customer_id) RETURNING id"), {"customer_id": cart_id})
-      
+        result = connection.execute(sqlalchemy.text("INSERT INTO customer_information (name, level, class) VALUES (:name, :level, :class) Returning id"), {"name": new_cart.customer_name, "level": new_cart.level, "class": new_cart.character_class})
+        cart_id = result.scalar()
+        cart_result = connection.execute(sqlalchemy.text("INSERT INTO customer_cart (customer_id) VALUES (:customer_id) RETURNING id"), {"customer_id": cart_id})
+        cart_id = cart_result.scalar()
 
     return {"cart_id": cart_id}
 
