@@ -78,10 +78,12 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
 
         potion_levels.sort(key = lambda x: x["ml"])
 
+        sorted_catalog = sorted(wholesale_catalog, key=lambda barrel: barrel.ml_per_barrel)
+
         for potion in potion_levels:
             potion_type = potion["type"]
 
-            for barrel in wholesale_catalog:
+            for barrel in sorted_catalog:
                 if barrel.potion_type[potion_type - 1] == 1:
                     max_afford = gold_in_instance // barrel.price
                     quantity_of_barrels = min(max_afford, barrel.quantity)
