@@ -21,6 +21,18 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
     
     with db.engine.begin() as connection:
 
+
+        for potion in potions_delivered:
+            connection.execute(sqlalchemy.text("""
+                                               INSERT INTO global_inventory (num_red_ml, num_green_ml, num_blue_ml, num_dark_ml)
+                                               VALUES (:sub_red_ml, :sub_green_ml, :sub_blue_ml, :sub_dark_ml)
+                                               """))
+            connection.execute(sqlalchemy.text("""
+                                               INSERT INTO potion_ledger (quantity)
+                                               VALUES ()
+                                               """))
+
+        """
         result = connection.execute(sqlalchemy.text("SELECT num_red_ml, num_green_ml, num_blue_ml, num_dark_ml FROM global_inventory")).first()
         current_ml = [result.num_red_ml, result.num_green_ml, result.num_blue_ml, result.num_dark_ml]
        
@@ -48,7 +60,7 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
                 potion_id = 6
 
             connection.execute(sqlalchemy.text("UPDATE potion_inventory SET quantity = quantity + :qty WHERE id = :pid"), {"qty" : potion.quantity, "pid" : potion_id})
-            
+            """
     print(f"potions delievered: {potions_delivered} order_id: {order_id}")
 
     return "OK"

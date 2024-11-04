@@ -26,6 +26,38 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
     print(f"barrels delievered: {barrels_delivered} order_id: {order_id}")
 
     with db.engine.begin() as connection:
+        
+        red_ml = 0
+        green_ml = 0
+        blue_ml = 0
+        dark_ml = 0
+        gold = 0
+
+        for barrel in barrels_delivered:
+            red_ml += (barrel.potion_type[0] * barrel.ml_per_barrel * barrel.quantity)
+            green_ml += (barrel.potion_type[1] * barrel.ml_per_barrel * barrel.quantity)
+            blue_ml += (barrel.potion_type[2] * barrel.ml_per_barrel * barrel.quantity)
+            dark_ml += (barrel.potion_type[3] * barrel.ml_per_barrel * barrel.quantity)
+            gold -= barrel.price * barrel.quantity
+
+        result = connection.execute(sqlalchemy.text(""""
+                                                    INSERT INTO global_inventory (num_red_ml, num_green_ml, num_blue_ml,num, gold)
+                                                    VALUES (:red_ml, :green_ml, :blue_ml, :dark_ml, :gold)
+                                                    RETURNING id 
+                                                    """),
+                                                    {"red_ml": red_ml, "green_ml" : green_ml, "blue_ml" : blue_ml, "dark_ml" : dark_ml, "gold" : gold})
+
+        connection.execute(sqlalchemy.text("""
+                                               INSERT INTO gold_ledger (gold)
+                                               VALUES (:gold)
+                                           """))
+                                           
+        id = result.id
+        
+
+        connection.execute(sqlalchemy.text(""" """))
+
+        """
         result = connection.execute(sqlalchemy.text("SELECT gold, num_red_ml, num_green_ml, num_blue_ml, num_dark_ml FROM global_inventory")).first()
 
         red_ml = result.num_red_ml
@@ -49,7 +81,7 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
                 gold_in_instance -= barrel.price * barrel.quantity
 
         connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = :g, num_red_ml = :rml, num_green_ml = :gml, num_blue_ml = :bml, num_dark_ml = :dml"), {"g": gold_in_instance, "rml" : red_ml, "gml" : green_ml, "bml" : blue_ml, "dml" : dark_ml})
-
+"""
     return "OK"
 
 # Gets called once a day
