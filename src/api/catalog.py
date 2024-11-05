@@ -14,13 +14,28 @@ def get_catalog():
     inventory_catalog = []
 
     with db.engine.begin() as connection:
+        
+        #result = connection.execute(sqlalchemy.text("SELECT potion_sku, name, price, quantity, red_ml, green_ml, blue_ml, dark_ml FROM potion_inventory WHERE quantity > 0")).fetchall()
 
-        result = connection.execute(sqlalchemy.text("SELECT potion_sku, name, price, quantity, red_ml, green_ml, blue_ml, dark_ml FROM potion_inventory WHERE quantity > 0")).fetchall()
-
+        result = connection.execute(sqlalchemy.text("""
+            SELECT
+                potion_sku,
+                name,
+                price,
+                SUM(quantity) AS quantity,
+                red_ml,
+                green_ml,
+                blue_ml,
+                dark_ml
+            FROM potion_ledger
+            GROUP BY potion_sku, name, price, red_ml, green_ml, blue_ml, dark_ml
+            HAVING SUM(quantity) > 0    
+        """)).fetchall()
+                            
         for potion in result:
             item_sku = potion.potion_sku
             item_name = potion.name
-            cost = potion.price
+            price = potion.price
             quantity = potion.quantity
             red_ml = potion.red_ml
             green_ml = potion.green_ml
@@ -32,7 +47,7 @@ def get_catalog():
                 "sku": item_sku,
                 "name": item_name,
                 "quantity": quantity,
-                "price": cost,
+                "price": price,
                 "potion_type": [red_ml, green_ml, blue_ml, dark_ml]
             }
             )

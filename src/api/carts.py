@@ -90,9 +90,19 @@ def create_cart(new_cart: Customer):
     """ """
 
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("INSERT INTO customer_information (name, level, class) VALUES (:name, :level, :class) Returning id"), {"name": new_cart.customer_name, "level": new_cart.level, "class": new_cart.character_class})
+        result = connection.execute(sqlalchemy.text("""
+            INSERT INTO customer_information (name, level, class) 
+            VALUES (:name, :level, :class) Returning id
+            """), 
+            {"name": new_cart.customer_name, 
+             "level": new_cart.level, 
+             "class": new_cart.character_class})
+        
         cart_id = result.scalar()
-        cart_result = connection.execute(sqlalchemy.text("INSERT INTO customer_cart (customer_id) VALUES (:customer_id) RETURNING id"), {"customer_id": cart_id})
+        cart_result = connection.execute(sqlalchemy.text("""
+            INSERT INTO customer_cart (customer_id) VALUES (:customer_id) RETURNING id"""),
+            {"customer_id": cart_id})
+        
         cart_id = cart_result.scalar()
 
     return {"cart_id": cart_id}
@@ -106,9 +116,18 @@ class CartItem(BaseModel):
 def set_item_quantity(cart_id: int, item_sku: str, cart_item: CartItem):
     """ """
     with db.engine.begin() as connection:
-        potion = connection.execute(sqlalchemy.text("SELECT id FROM potion_inventory WHERE potion_sku = :sku"), {"sku": item_sku}).first()
+        potion = connection.execute(sqlalchemy.text("""
+            SELECT id FROM potion_ledger
+            WHERE potion_sku = :sku"""), 
+            {"sku": item_sku}).first()
 
-        connection.execute(sqlalchemy.text("INSERT INTO cart_items (cart_id, potion_id, quantity) VALUES (:cid, :pid, :quantity)"), {"cid": cart_id, "pid": potion.id, "quantity": cart_item.quantity})
+        connection.execute(sqlalchemy.text("""
+            INSERT INTO cart_items (cart_id, potion_id, quantity) 
+            VALUES (:cid, :pid, :quantity)
+            """),
+            {"cid": cart_id, 
+             "pid": potion.id, 
+             "quantity": cart_item.quantity})
        
        
     return "OK"
@@ -125,29 +144,41 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
     instance_gold = 0
     
     with db.engine.begin() as connection:
-        cart = connection.execute(sqlalchemy.text("""SELECT 
-                                              cart_items.quantity,
-                                              potion_inventory.id AS potion_id,
-                                              potion_inventory.price AS potion_price,
-                                              potion_inventory.quantity AS potion_stock
-                                              FROM customer_cart
-                                              JOIN cart_items
-                                              ON customer_cart.id = cart_items.cart_id
-                                              JOIN potion_inventory
-                                              ON cart_items.potion_id = potion_inventory.id
-                                              WHERE customer_cart.id = :cart_id"""), {"cart_id": cart_id}).fetchall()
+        cart = connection.execute(sqlalchemy.text("""
+            SELECT 
+                cart_items.quantity,
+                potion_inventory.id AS potion_id,
+                potion_inventory.price AS potion_price,
+                potion_inventory.quantity AS potion_stock
+            FROM customer_cart
+            JOIN cart_items ON customer_cart.id = cart_items.cart_id
+            JOIN potion_ledger ON cart_items.potion_id = potion_ledger.id
+            WHERE customer_cart.id = :cart_id"""), 
+            {"cart_id": cart_id}).fetchall()
         
         for item in cart:
             instance_potions += item.quantity
             instance_gold += item.quantity * item.potion_price
 
-            connection.execute(sqlalchemy.text("UPDATE potion_inventory SET quantity = quantity - :qty WHERE id = :pid"), {"qty": item.quantity, "pid": item.potion_id})
+            connection.execute(sqlalchemy.text("""
+                INSERT INTO potion_ledger (potion_sku, name, quantity, price, red_ml, green_ml, blue_ml, dark_ml)
+                SELECT potion_sku, name, :quantity, price, red_ml, green_ml, blue_ml, dark_ml)
+                FROM potion_ledger
+                WHERE id = :potion_id
+                """), 
+                {"quantity": -item.quantity, 
+                 "potion_id": item.potion_id})
             
+        connection.execute(sqlalchemy.text("""
+            INSERT INTO gold_ledger (gold)
+            VALUES (:gold)
+            """),
+            {"gold": instance_gold})
         
-        connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = gold + :qty"), {"qty": instance_gold})
-        connection.execute(sqlalchemy.text("UPDATE customer_cart SET payment = :payment WHERE id = :cart_id"), {"payment": cart_checkout.payment,"cart_id": cart_id})
-
-            
-        
+        connection.execute(sqlalchemy.text("""
+            UPDATE customer_cart 
+            SET payment = :payment 
+            WHERE id = :cart_id"""), 
+            {"payment": cart_checkout.payment,"cart_id": cart_id})
 
     return {"total_potions_bought": instance_potions, "total_gold_paid": instance_gold}

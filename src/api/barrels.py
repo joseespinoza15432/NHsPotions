@@ -40,48 +40,24 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
             dark_ml += (barrel.potion_type[3] * barrel.ml_per_barrel * barrel.quantity)
             gold -= barrel.price * barrel.quantity
 
-        result = connection.execute(sqlalchemy.text(""""
-                                                    INSERT INTO global_inventory (num_red_ml, num_green_ml, num_blue_ml,num, gold)
-                                                    VALUES (:red_ml, :green_ml, :blue_ml, :dark_ml, :gold)
-                                                    RETURNING id 
-                                                    """),
-                                                    {"red_ml": red_ml, "green_ml" : green_ml, "blue_ml" : blue_ml, "dark_ml" : dark_ml, "gold" : gold})
-
-        connection.execute(sqlalchemy.text("""
-                                               INSERT INTO gold_ledger (gold)
-                                               VALUES (:gold)
-                                           """))
-                                           
-        id = result.id
         
-
-        connection.execute(sqlalchemy.text(""" """))
-
-        """
-        result = connection.execute(sqlalchemy.text("SELECT gold, num_red_ml, num_green_ml, num_blue_ml, num_dark_ml FROM global_inventory")).first()
-
-        red_ml = result.num_red_ml
-        green_ml = result.num_green_ml
-        blue_ml = result.num_blue_ml
-        dark_ml = result.num_dark_ml
-        gold_in_instance = result.gold
-
-        for barrel in barrels_delivered:
-            if barrel.potion_type == [1, 0, 0, 0]:
-                red_ml += barrel.ml_per_barrel * barrel.quantity
-                gold_in_instance -= barrel.price * barrel.quantity
-            if barrel.potion_type == [0, 1, 0, 0]:
-                green_ml += barrel.ml_per_barrel * barrel.quantity
-                gold_in_instance -= barrel.price * barrel.quantity
-            if barrel.potion_type == [0, 0, 1, 0]:
-                blue_ml += barrel.ml_per_barrel * barrel.quantity
-                gold_in_instance -= barrel.price * barrel.quantity
-            if barrel.potion_type == [0, 0, 0, 1]:
-                dark_ml += barrel.ml_per_barrel * barrel.quantity
-                gold_in_instance -= barrel.price * barrel.quantity
-
-        connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = :g, num_red_ml = :rml, num_green_ml = :gml, num_blue_ml = :bml, num_dark_ml = :dml"), {"g": gold_in_instance, "rml" : red_ml, "gml" : green_ml, "bml" : blue_ml, "dml" : dark_ml})
-"""
+        connection.execute(sqlalchemy.text(""""
+            INSERT INTO ml_ledger (red_ml, green_ml, blue_ml, dark_ml)
+            VALUES (:red_ml, :green_ml, :blue_ml, :dark_ml)
+            """),
+            {
+                "red_ml": red_ml, 
+                "green_ml" : green_ml, 
+                "blue_ml" : blue_ml, 
+                "dark_ml" : dark_ml
+            })
+        
+        connection.execute(sqlalchemy.text("""
+            INSERT INTO gold_ledger (gold)
+            VALUES (:gold)
+            """),
+            {"gold": gold})
+                                           
     return "OK"
 
 # Gets called once a day
@@ -89,17 +65,25 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
 def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     
     print(wholesale_catalog)
-
     barrel_plan = []
 
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT num_red_ml, num_green_ml, num_blue_ml, num_dark_ml, gold FROM global_inventory")).first()
 
-        red_ml = result.num_red_ml
-        green_ml = result.num_green_ml
-        blue_ml = result.num_blue_ml
-        dark_ml = result.num_dark_ml
-        gold_in_instance = result.gold
+        gold = connection.execute(sqlalchemy.text("SELECT SUM(gold) FROM gold_ledger")).first()
+        result = connection.execute(sqlalchemy.text("""
+            SELECT 
+                COALESCE(SUM(red_ml), 0) AS red_ml, 
+                COALESCE(SUM(green_ml), 0) AS green_ml,
+                COALESCE(SUM(blue_ml), 0) AS blue_ml,
+                COALESCE(SUM(dark_ml), 0) AS dark_ml,
+            FROM ml_ledger
+            """)).first()
+
+        red_ml = result.red_ml
+        green_ml = result.green_ml
+        blue_ml = result.blue_ml
+        dark_ml = result.dark_ml
+        
 
         potion_levels = [
             {"type": 1, "ml": red_ml},
@@ -109,7 +93,6 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         ]
 
         potion_levels.sort(key = lambda x: x["ml"])
-
         sorted_catalog = sorted(wholesale_catalog, key=lambda barrel: barrel.ml_per_barrel)
 
         for potion in potion_levels:
@@ -117,7 +100,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
 
             for barrel in sorted_catalog:
                 if barrel.potion_type[potion_type - 1] == 1:
-                    max_afford = gold_in_instance // barrel.price
+                    max_afford = gold // barrel.price
                     quantity_of_barrels = min(max_afford, barrel.quantity)
 
                     if quantity_of_barrels > 0:
@@ -127,12 +110,11 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                                 "quantity": quantity_of_barrels
                             }
                         )
-                        gold_in_instance -= barrel.price * quantity_of_barrels
+                        gold -= barrel.price * quantity_of_barrels
 
-                    if gold_in_instance <= 0:
+                    if gold <= 0:
                         break
-            if gold_in_instance <= 0:
+            if gold <= 0:
                 break
         
     return barrel_plan
-    

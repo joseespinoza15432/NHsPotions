@@ -1,10 +1,26 @@
 from fastapi import APIRouter, Depends
-from enum import Enum
 from pydantic import BaseModel
 from src.api import auth
 import sqlalchemy
 from src import database as db
-import random
+
+potion_types = [
+            {"type": [100, 0, 0, 0], "name": "Red Potion"},
+            {"type": [0, 100, 0, 0], "name": "Green Potion"},
+            {"type": [0, 0, 100, 0], "name": "Blue Potion"},
+            {"type": [0, 0, 0, 100], "name": "Dark Potion"},
+            {"type": [0, 50, 0, 50], "name": "Purple Potion"},
+            {"type": [0, 50, 50, 0], "name": "Yellow Potion"},
+        ]
+
+potion_map = {
+    (100, 0, 0, 0): {"sku": "nh_red_potion", "name": "red_potion"},
+    (0, 100, 0, 0): {"sku": "nh_green_potion", "name": "green_potion"},
+    (0, 0, 100, 0): {"sku": "nh_blue_potion", "name": "blue_potion"},
+    (0, 0, 0, 100): {"sku": "nh_dark_potion", "name": "dark_potion"},
+    (0, 50, 0, 50): {"sku": "nh_purple_potion", "name": "purple_potion"},
+    (0, 50, 50, 0): {"sku": "nh_yellow_potion", "name": "yellow_potion"}
+}
 
 router = APIRouter(
     prefix="/bottler",
@@ -21,46 +37,56 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
     
     with db.engine.begin() as connection:
 
+        result = connection.execute(sqlalchemy.text("""
+            SELECT
+                COALESCE(SUM(red_ml), 0) AS red_ml, 
+                COALESCE(SUM(green_ml), 0) AS green_ml, 
+                COALESCE(SUM(blue_ml), 0) AS blue_ml, 
+                COALESCE(SUM(dark_ml), 0) AS dark_ml
+            FROM ml_ledger
+            """)).first()
+
+        current_ml = [result.red_ml, result.green_ml, result.blue_ml, result.dark_ml]
 
         for potion in potions_delivered:
-            connection.execute(sqlalchemy.text("""
-                                               INSERT INTO global_inventory (num_red_ml, num_green_ml, num_blue_ml, num_dark_ml)
-                                               VALUES (:sub_red_ml, :sub_green_ml, :sub_blue_ml, :sub_dark_ml)
-                                               """))
-            connection.execute(sqlalchemy.text("""
-                                               INSERT INTO potion_ledger (quantity)
-                                               VALUES ()
-                                               """))
 
-        """
-        result = connection.execute(sqlalchemy.text("SELECT num_red_ml, num_green_ml, num_blue_ml, num_dark_ml FROM global_inventory")).first()
-        current_ml = [result.num_red_ml, result.num_green_ml, result.num_blue_ml, result.num_dark_ml]
-       
-
-        for potion in potions_delivered:
-            
+            potion_type = tuple(potion.potion_type)
             current_ml[0] -= potion.potion_type[0] * potion.quantity
             current_ml[1] -= potion.potion_type[1] * potion.quantity
             current_ml[2] -= potion.potion_type[2] * potion.quantity
             current_ml[3] -= potion.potion_type[3] * potion.quantity
 
-            connection.execute(sqlalchemy.text("UPDATE global_inventory SET num_red_ml = :rml, num_green_ml = :gml, num_blue_ml = :bml, num_dark_ml = :dml"), {"rml" : current_ml[0], "gml" : current_ml[1], "bml" : current_ml[2], "dml" : current_ml[3]})
+            connection.execute(sqlalchemy.text("""
+                INSERT INTO ml_ledger (red_ml, green_ml, blue_ml, dark_ml)
+                VALUES (:red_ml, :green_ml, :blue_ml, :dark_ml)
+                """),
+                {
+                    "red_ml": current_ml[0], 
+                    "green_ml": current_ml[1],
+                    "blue_ml": current_ml[2], 
+                    "dark_ml": current_ml[3]
+                })
+            
+            
+            if potion_type in potion_map:
+                potion_info = potion_map[potion_type]
+                connection.execute(sqlalchemy.text("""
+                    INSERT INTO potion_ledger (potion_sku, name, quantity, price, red_ml, green_ml, blue_ml, dark_ml)
+                    VALUES (:potion_sku, :name, :quantity, :price, :red_ml, :green_ml, :blue_ml, :dark_ml))
+                    """),
+                    {
+                        "potion_sku": potion_info["sku"],
+                        "name": potion_info["name"],
+                        "quantity": potion.quantity,
+                        "price": 30,
+                        "red_ml": potion.potion_type[0] * potion.quantity, 
+                        "green_ml": potion.potion_type[1] * potion.quantity,
+                        "blue_ml": potion.potion_type[2] * potion.quantity, 
+                        "dark_ml": potion.potion_type[3] * potion.quantity
+                    })
 
-            if potion.potion_type == [100, 0, 0, 0]:  
-                potion_id = 1
-            elif potion.potion_type == [0, 100, 0, 0]:  
-                potion_id = 2
-            elif potion.potion_type == [0, 0, 100, 0]: 
-                potion_id = 3
-            elif potion.potion_type == [0, 0, 0, 100]:  
-                potion_id = 4
-            elif potion.potion_type == [50, 0, 50, 0]:  
-                potion_id = 5
-            elif potion.potion_type == [50, 50, 0, 0]:  
-                potion_id = 6
-
-            connection.execute(sqlalchemy.text("UPDATE potion_inventory SET quantity = quantity + :qty WHERE id = :pid"), {"qty" : potion.quantity, "pid" : potion_id})
-            """
+        
+        
     print(f"potions delievered: {potions_delivered} order_id: {order_id}")
 
     return "OK"
@@ -74,119 +100,35 @@ def get_bottle_plan():
     bottle_plan = []
 
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT num_red_ml, num_green_ml, num_blue_ml, num_dark_ml FROM global_inventory")).first()
         
-        available_ml = [result.num_red_ml, result.num_green_ml, result.num_blue_ml, result.num_dark_ml]
+        result = connection.execute(sqlalchemy.text("""
+            SELECT 
+                COALESCE(SUM(red_ml), 0) AS red_ml, 
+                COALESCE(SUM(green_ml), 0) AS green_ml, 
+                COALESCE(SUM(blue_ml), 0) AS blue_ml, 
+                COALESCE(SUM(dark_ml), 0) AS dark_ml
+            FROM ml_ledger
+            """)).first()
 
-        yellow_potion = [50, 50, 0, 0]
-        purple_potion = [50, 0, 50, 0]
-        red_potion = [100, 0, 0, 0]
-        green_potion = [0, 100, 0, 0]
-        blue_potion = [0, 0, 100, 0]
-        dark_potion = [0, 0, 0, 100]
+        available_ml = [result.red_ml, result.green_ml, result.blue_ml, result.dark_ml]
 
         while sum(available_ml) >= 100:
-
-            if available_ml[0] >= 50 and available_ml[1] >= 50:
-                bottle_plan.append(
-                    {
-                        "potion_type": yellow_potion,
-                        "quantity": 1
-                    }
-                )
-                available_ml[0] -= 50
-                available_ml[1] -= 50
-
-            elif available_ml[0] >= 50 and available_ml[2] >= 50:
-                bottle_plan.append(
-                    {
-                        "potion_type": purple_potion,
-                        "quantity": 1
-                    }
-                )
-                available_ml[0] -= 50
-                available_ml[2] -= 50
-                
-            elif available_ml[0] >= 100:
-                bottle_plan.append(
-                    {
-                        "potion_type": red_potion,
-                        "quantity": 1
-                    }
-                )
-                available_ml[0] -= 100
-
-            elif available_ml[1] >= 100:
-                bottle_plan.append(
-                    {
-                        "potion_type": green_potion,
-                        "quantity": 1
-                    }
-                )
-                available_ml[1] -= 100
-
-            elif available_ml[2] >= 100:
-                bottle_plan.append(
-                    {
-                        "potion_type": blue_potion,
-                        "quantity": 1
-                    }
-                )
-                available_ml[2] -= 100
-
-            elif available_ml[3] >= 100:
-                bottle_plan.append(
-                    {
-                        "potion_type": dark_potion,
-                        "quantity": 1
-                    }
-                )
-                available_ml[3] -= 100
-
+    
+            for potion in potion_types:
+                potion_type = potion["type"]
+                if all(available_ml >= potion_type[i] for i in range(4)):
+                    bottle_plan.append(
+                        {
+                            "potion_type": potion_type,
+                            "quantity": 1
+                        })
+                    available_ml = [available_ml[i] - potion_type[i] for i in range(4)]
+                    break
             else:
-                print("not enough ml :(")
+                print("Not enough ml :(")
                 break
 
     return bottle_plan
-
-"""
-def potion_type_creator(available_ml):
-    total_ml = 100
-    potion_type = [0, 0, 0, 0]
-
-    colors = [i for i, ml in enumerate(available_ml) if ml > 0]
-
-    for i in range (3):
-        if colors:
-            idx = random.choice(colors)
-            max_ml = min(total_ml, available_ml[idx])
-            potion_type[idx] = random.randint(0, max_ml)
-            total_ml -= potion_type[idx]
-
-            if available_ml[idx] - potion_type[idx] == 0:
-                colors.remove(idx)
-
-    remaining_color = random.choice(colors)
-    potion_type[remaining_color] = total_ml
-
-    if get_create_potion(potion_type, available_ml):
-        return potion_type
-    else:
-        return None
-
-
-def get_create_potion(potion_type, available_ml):
-    for i in range(4):
-        if available_ml[i] < potion_type[i]:
-            return False
-    return True
-
-
-def create_potion(potion_type, available_ml):
-    for i in range(4):
-        available_ml[i] -= potion_type[i]
-    print("Potion Created, updated ml: ", available_ml)
-"""
 
 if __name__ == "__main__":
     print(get_bottle_plan())
