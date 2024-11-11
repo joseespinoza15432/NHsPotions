@@ -54,18 +54,60 @@ def search_orders(
     time is 5 total line items.
     """
 
+    page_size = 5
+    offset = page_size * (int(search_page) if search_page.isdigit() else 0)
+
+    if sort_col == search_sort_options.customer_name:
+        order_by_column = "customer_information.name"
+    elif sort_col == search_sort_options.item_sku:
+        order_by_column = "potion_ledger.potion_sku"
+    elif sort_col == search_sort_options.line_item_total:
+        order_by_column = "cart_items.line_item_total"
+    else:
+        order_by_column = "cart_items.created_at"
+
+    order_direction = "ASC" if sort_order == search_sort_order.asc else "DESC"
+
+    stmt = f"""
+        SELECT 
+            cart_items.id AS line_item_id,
+            potion_ledger.potion_sku AS item_sku,
+            customer_information.name AS customer_name,
+            cart_items.line_item_total,
+            cart_items.created_at AS timestamp
+        FROM cart_items
+        JOIN customer_cart ON cart_items.cart_id = customer_cart.id
+        JOIN customer_information ON customer_cart.customer_id = customer_information.id
+        JOIN potion_ledger ON cart_items.potion_id = potion_ledger.id
+        WHERE 
+            (:customer_name = '' OR customer_information.name ILIKE '%' || :customer_name || '%')
+            AND (:potion_sku = '' OR potion_ledger.potion_sku ILIKE '%' || :potion_sku || '%')
+        ORDER BY {order_by_column} {order_direction}, cart_items.id
+        LIMIT :page_size OFFSET :offset
+    """
+
+    with db.engine.begin() as connection:
+        results = connection.execute(sqlalchemy.text(stmt), {"customer_name": customer_name, "potion_sku": potion_sku, "page_size": page_size, "offset": offset}).fetchall()
+        
+    items = [
+        {
+            "line_item_id": row.line_item_id,
+            "item_sku": row.item_sku,
+            "customer_name": row.customer_name,
+            "line_item_total": row.line_item_total,
+            "timestamp": row.timestamp.isoformat() + "Z"
+        }
+        for row in results
+    ]
+
+    previous_page = str(int(search_page) - 1) if offset > 0 else ""
+    next_page = str(int(search_page) + 1) if len(results) == page_size else ""
+
+    
     return {
-        "previous": "",
-        "next": "",
-        "results": [
-            {
-                "line_item_id": 1,
-                "item_sku": "1 oblivion potion",
-                "customer_name": "Scaramouche",
-                "line_item_total": 50,
-                "timestamp": "2021-01-01T00:00:00Z",
-            }
-        ],
+        "previous": previous_page,
+        "next": next_page,
+        "results": items,
     }
 
 
@@ -147,9 +189,9 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
         cart = connection.execute(sqlalchemy.text("""
             SELECT 
                 cart_items.quantity,
-                potion_inventory.id AS potion_id,
-                potion_inventory.price AS potion_price,
-                potion_inventory.quantity AS potion_stock
+                potion_ledger.id AS potion_id,
+                potion_ledger.price AS potion_price,
+                potion_ledger.quantity AS potion_stock
             FROM customer_cart
             JOIN cart_items ON customer_cart.id = cart_items.cart_id
             JOIN potion_ledger ON cart_items.potion_id = potion_ledger.id
