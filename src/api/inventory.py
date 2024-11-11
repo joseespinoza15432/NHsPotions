@@ -23,7 +23,13 @@ def get_inventory():
     total_gold = 0
 
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("""
+
+        result_potions = connection.execute(sqlalchemy.text("""
+            SELECT COALESCE(SUM(quantity), 0) AS total_potions
+            FROM potion_ledger
+            """)).first()
+
+        result_liquid = connection.execute(sqlalchemy.text("""
             SELECT 
                 COALESCE(SUM(red_ml), 0) AS red_ml, 
                 COALESCE(SUM(green_ml), 0) AS green_ml, 
@@ -32,18 +38,11 @@ def get_inventory():
             FROM ml_ledger
             """)).first()
         
-        total_gold = connection.execute(sqlalchemy.text("SELECT SUM(gold) FROM gold_ledger")).first()
-        total_liquid = result.red_ml + result.green_ml + result.blue_ml + result.dark_ml
-
-
-    """
-    with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text("SELECT gold, num_red_ml, num_green_ml, num_blue_ml, num_dark_ml FROM global_inventory")).first()
-        total_liquid = result.num_red_ml + result.num_green_ml + result.num_blue_ml + result.num_dark_ml
-        total_gold = result.gold
-
-        result = connection.execute(sqlalchemy.text("SELECT quantity FROM potion_inventory")).fetchall()
-        total_potions = sum(row.quantity for row in result)"""
+        result_gold = connection.execute(sqlalchemy.text("SELECT COALESCE(SUM(gold),0) AS total_gold FROM gold_ledger")).first()
+        
+        total_potions = result_potions.total_potions
+        total_liquid = result_liquid.red_ml + result_liquid.green_ml + result_liquid.blue_ml + result_liquid.dark_ml
+        total_gold = result_gold.total_gold
 
     return {"number_of_potions": total_potions, "ml_in_barrels": total_liquid, "gold": total_gold}
 
