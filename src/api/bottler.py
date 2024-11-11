@@ -72,7 +72,7 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
                 potion_info = potion_map[potion_type]
                 connection.execute(sqlalchemy.text("""
                     INSERT INTO potion_ledger (potion_sku, name, quantity, price, red_ml, green_ml, blue_ml, dark_ml)
-                    VALUES (:potion_sku, :name, :quantity, :price, :red_ml, :green_ml, :blue_ml, :dark_ml))
+                    VALUES (:potion_sku, :name, :quantity, :price, :red_ml, :green_ml, :blue_ml, :dark_ml)
                     """),
                     {
                         "potion_sku": potion_info["sku"],
@@ -116,7 +116,7 @@ def get_bottle_plan():
     
             for potion in potion_types:
                 potion_type = potion["type"]
-                if all(available_ml >= potion_type[i] for i in range(4)):
+                if all(available_ml[i] >= potion_type[i] for i in range(4)):
                     bottle_plan.append(
                         {
                             "potion_type": potion_type,

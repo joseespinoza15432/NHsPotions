@@ -41,7 +41,7 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
             gold -= barrel.price * barrel.quantity
 
         
-        connection.execute(sqlalchemy.text(""""
+        connection.execute(sqlalchemy.text("""
             INSERT INTO ml_ledger (red_ml, green_ml, blue_ml, dark_ml)
             VALUES (:red_ml, :green_ml, :blue_ml, :dark_ml)
             """),
@@ -69,13 +69,13 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
 
     with db.engine.begin() as connection:
 
-        gold = connection.execute(sqlalchemy.text("SELECT SUM(gold) FROM gold_ledger")).first()
+        gold = connection.execute(sqlalchemy.text("SELECT SUM(gold) FROM gold_ledger")).scalar()
         result = connection.execute(sqlalchemy.text("""
             SELECT 
                 COALESCE(SUM(red_ml), 0) AS red_ml, 
                 COALESCE(SUM(green_ml), 0) AS green_ml,
                 COALESCE(SUM(blue_ml), 0) AS blue_ml,
-                COALESCE(SUM(dark_ml), 0) AS dark_ml,
+                COALESCE(SUM(dark_ml), 0) AS dark_ml
             FROM ml_ledger
             """)).first()
 
