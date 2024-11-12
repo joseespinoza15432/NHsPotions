@@ -68,7 +68,7 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
                         "potion_sku": potion_info["sku"],
                         "name": potion_info["name"],
                         "quantity": potion.quantity,
-                        "price": 30,
+                        "price": 40,
                         "red_ml": used_red_ml, 
                         "green_ml": used_green_ml,
                         "blue_ml": used_blue_ml, 
