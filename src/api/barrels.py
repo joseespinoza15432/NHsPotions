@@ -79,41 +79,28 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
             FROM ml_ledger
             """)).first()
 
-        red_ml = result.red_ml
-        green_ml = result.green_ml
-        blue_ml = result.blue_ml
-        dark_ml = result.dark_ml
-        
+        ml_levels = {
+            "red_ml": result.red_ml,
+            "green_ml": result.green_ml,
+            "blue_ml": result.blue_ml,
+            "dark_ml": result.dark_ml
+        }
 
-        potion_levels = [
-            {"type": 1, "ml": red_ml},
-            {"type": 2, "ml": green_ml},
-            {"type": 3, "ml": blue_ml},
-            {"type": 4, "ml": dark_ml}
-        ]
+        sorted_ml_levels = sorted(ml_levels.items(), key=lambda x: x[1])
+        sorted_catalog = sorted(wholesale_catalog, key=lambda barrel: barrel.ml_per_barrel / barrel.price, reverse=True)
 
-        potion_levels.sort(key = lambda x: x["ml"])
-        sorted_catalog = sorted(wholesale_catalog, key=lambda barrel: barrel.ml_per_barrel)
+        for potion, _ in sorted_ml_levels:
 
-        for potion in potion_levels:
-            potion_type = potion["type"]
+            potion_index = ["red_ml", "green_ml", "blue_ml", "dark_ml"].index(potion)
 
             for barrel in sorted_catalog:
-                if barrel.potion_type[potion_type - 1] == 1:
-                    max_afford = gold // barrel.price
-                    quantity_of_barrels = min(max_afford, barrel.quantity)
+                
+                if barrel.potion_type[potion_index] == 1 and gold >= barrel.price:
+                    barrel_plan.append({"sku": barrel.sku, "quantity": 1})
+                    gold -= barrel.price 
+                    ml_levels[potion] += barrel.ml_per_barrel  
+                    break  
 
-                    if quantity_of_barrels > 0:
-                        barrel_plan.append(
-                            {
-                                "sku": barrel.sku,
-                                "quantity": quantity_of_barrels
-                            }
-                        )
-                        gold -= barrel.price * quantity_of_barrels
-
-                    if gold <= 0:
-                        break
             if gold <= 0:
                 break
         

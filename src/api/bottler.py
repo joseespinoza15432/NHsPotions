@@ -37,34 +37,24 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
     
     with db.engine.begin() as connection:
 
-        result = connection.execute(sqlalchemy.text("""
-            SELECT
-                COALESCE(SUM(red_ml), 0) AS red_ml, 
-                COALESCE(SUM(green_ml), 0) AS green_ml, 
-                COALESCE(SUM(blue_ml), 0) AS blue_ml, 
-                COALESCE(SUM(dark_ml), 0) AS dark_ml
-            FROM ml_ledger
-            """)).first()
-
-        current_ml = [result.red_ml, result.green_ml, result.blue_ml, result.dark_ml]
-
         for potion in potions_delivered:
 
             potion_type = tuple(potion.potion_type)
-            current_ml[0] -= potion.potion_type[0] * potion.quantity
-            current_ml[1] -= potion.potion_type[1] * potion.quantity
-            current_ml[2] -= potion.potion_type[2] * potion.quantity
-            current_ml[3] -= potion.potion_type[3] * potion.quantity
+
+            used_red_ml = potion.potion_type[0] * potion.quantity
+            used_green_ml = potion.potion_type[1] * potion.quantity
+            used_blue_ml = potion.potion_type[2] * potion.quantity
+            used_dark_ml = potion.potion_type[3] * potion.quantity
 
             connection.execute(sqlalchemy.text("""
                 INSERT INTO ml_ledger (red_ml, green_ml, blue_ml, dark_ml)
                 VALUES (:red_ml, :green_ml, :blue_ml, :dark_ml)
                 """),
                 {
-                    "red_ml": current_ml[0], 
-                    "green_ml": current_ml[1],
-                    "blue_ml": current_ml[2], 
-                    "dark_ml": current_ml[3]
+                    "red_ml": -used_red_ml, 
+                    "green_ml": -used_green_ml,
+                    "blue_ml": -used_blue_ml, 
+                    "dark_ml": -used_dark_ml
                 })
             
             
@@ -79,10 +69,10 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
                         "name": potion_info["name"],
                         "quantity": potion.quantity,
                         "price": 30,
-                        "red_ml": potion.potion_type[0] * potion.quantity, 
-                        "green_ml": potion.potion_type[1] * potion.quantity,
-                        "blue_ml": potion.potion_type[2] * potion.quantity, 
-                        "dark_ml": potion.potion_type[3] * potion.quantity
+                        "red_ml": used_red_ml, 
+                        "green_ml": used_green_ml,
+                        "blue_ml": used_blue_ml, 
+                        "dark_ml": used_dark_ml
                     })
 
         
