@@ -54,60 +54,85 @@ def search_orders(
     time is 5 total line items.
     """
 
-    page_size = 5
-    offset = page_size * (int(search_page) if search_page.isdigit() else 0)
-
-    if sort_col == search_sort_options.customer_name:
-        order_by_column = "customer_information.name"
-    elif sort_col == search_sort_options.item_sku:
-        order_by_column = "potion_ledger.potion_sku"
-    elif sort_col == search_sort_options.line_item_total:
-        order_by_column = "cart_items.line_item_total"
-    else:
-        order_by_column = "cart_items.created_at"
-
-    order_direction = "ASC" if sort_order == search_sort_order.asc else "DESC"
-
-    stmt = f"""
+    
+    stmt = """
         SELECT 
-            cart_items.id AS line_item_id,
-            potion_ledger.potion_sku AS item_sku,
-            customer_information.name AS customer_name,
-            cart_items.line_item_total,
-            cart_items.created_at AS timestamp
+            cart_items.cart_id,
+            cart_items.quantity,
+            potion_ledger.potion_sku AS sku,
+            cart_items.potion_id,
+            customer_cart.customer_id,
+            customer_information.name,
+            cart_items.created_at AS timestamp,
+            potion_ledger.price
         FROM cart_items
         JOIN customer_cart ON cart_items.cart_id = customer_cart.id
         JOIN customer_information ON customer_cart.customer_id = customer_information.id
         JOIN potion_ledger ON cart_items.potion_id = potion_ledger.id
-        WHERE 
-            (:customer_name = '' OR customer_information.name ILIKE '%' || :customer_name || '%')
-            AND (:potion_sku = '' OR potion_ledger.potion_sku ILIKE '%' || :potion_sku || '%')
-        ORDER BY {order_by_column} {order_direction}, cart_items.id
-        LIMIT :page_size OFFSET :offset
-    """
+        """
+    query = {}
+
+    if customer_name:
+        stmt += " WHERE customer_information.name ILIKE :cust_name"
+        query["cust_name"] = f"%{customer_name}%"
+    if potion_sku:
+        if "WHERE" in stmt:
+            stmt += " AND potion_ledger.potion_sku ILIKE :potion_sku"
+        else:
+            stmt += " WHERE potion_ledger.potion_sku ILIKE :potion_sku"
+        query["potion_sku"] = f"%{potion_sku}%"
+
+    page_size = 5
+    current_page = int(search_page) if search_page.isdigit() else 1
+    offset = page_size * (current_page - 1)
+    query["offset"] = offset
+
+    order_column = "cart_items.created_at" if sort_col == search_sort_options.timestamp else \
+                   "cart_items.quantity" if sort_col == search_sort_options.line_item_total else \
+                   "customer_information.name" if sort_col == search_sort_options.customer_name else \
+                   "potion_ledger.potion_sku"
+
+    order_direction = "ASC" if sort_order == search_sort_order.asc else "DESC"
+
+    stmt += f" ORDER BY {order_column} {order_direction} LIMIT {page_size} OFFSET :offset"
+
+    sql_query = """
+        SELECT COUNT(*)
+        FROM cart_items
+        JOIN customer_cart ON cart_items.cart_id = customer_cart.id
+        JOIN customer_information ON customer_cart.customer_id = customer_information.id
+        JOIN potion_ledger ON cart_items.potion_id = potion_ledger.id
+        """
+    if customer_name:
+        sql_query += " WHERE customer_information.name ILIKE :cust_name"
+    if potion_sku:
+        if "WHERE" in sql_query:
+            sql_query += " AND potion_ledger.potion_sku ILIKE :potion_sku"
+        else:
+            sql_query += " WHERE potion_ledger.potion_sku ILIKE :potion_sku"
 
     with db.engine.begin() as connection:
-        results = connection.execute(sqlalchemy.text(stmt), {"customer_name": customer_name, "potion_sku": potion_sku, "page_size": page_size, "offset": offset}).fetchall()
-        
-    items = [
+        total_items = connection.execute(sqlalchemy.text(sql_query), query).scalar()
+        query_results = connection.execute(sqlalchemy.text(stmt), query).fetchall()
+
+    results = [
         {
-            "line_item_id": row.line_item_id,
-            "item_sku": row.item_sku,
-            "customer_name": row.customer_name,
-            "line_item_total": row.line_item_total,
+            "line_item_id": row.cart_id,
+            "item_sku": row.sku,
+            "customer_name": row.name,
+            "line_item_total": row.quantity * row.price,
             "timestamp": row.timestamp.isoformat() + "Z"
         }
-        for row in results
+        for row in query_results
     ]
 
-    previous_page = str(int(search_page) - 1) if offset > 0 else ""
-    next_page = str(int(search_page) + 1) if len(results) == page_size else ""
+    previous_page_token = str(current_page - 1) if current_page > 1 else ""
+    next_page_token = str(current_page + 1) if (current_page * page_size) < total_items else ""
 
-    
     return {
-        "previous": previous_page,
-        "next": next_page,
-        "results": items,
+        "previous": previous_page_token,
+        "next": next_page_token,
+        "results": results,
     }
 
 
