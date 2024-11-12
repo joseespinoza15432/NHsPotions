@@ -229,7 +229,7 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
 
             connection.execute(sqlalchemy.text("""
                 INSERT INTO potion_ledger (potion_sku, name, quantity, price, red_ml, green_ml, blue_ml, dark_ml)
-                SELECT potion_sku, name, :quantity, price, red_ml, green_ml, blue_ml, dark_ml)
+                SELECT potion_sku, name, :quantity, price, red_ml, green_ml, blue_ml, dark_ml
                 FROM potion_ledger
                 WHERE id = :potion_id
                 """), 
@@ -246,6 +246,7 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
             UPDATE customer_cart 
             SET payment = :payment 
             WHERE id = :cart_id"""), 
-            {"payment": cart_checkout.payment,"cart_id": cart_id})
+            {"payment": cart_checkout.payment, "cart_id": cart_id})
 
     return {"total_potions_bought": instance_potions, "total_gold_paid": instance_gold}
+
