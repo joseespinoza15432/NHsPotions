@@ -115,6 +115,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
             if gold <= 0:
                 print("not enough gold :(")
                 break
-            
-        print(barrel_plan)
+        
+        print("ml storage value: ", ml_storage)
+        print("barrel plan: ", barrel_plan)
     return barrel_plan
