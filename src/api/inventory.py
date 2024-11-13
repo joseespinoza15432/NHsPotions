@@ -44,7 +44,7 @@ def get_inventory():
         total_liquid = result_liquid.red_ml + result_liquid.green_ml + result_liquid.blue_ml + result_liquid.dark_ml
         total_gold = result_gold.total_gold
 
-        #print("# of potions: ", total_potions, "# of ml: ", total_liquid, "# of gold: ", total_gold)
+        print("# of potions: ", total_potions, "# of ml: ", total_liquid, "# of gold: ", total_gold)
     return {"number_of_potions": total_potions, "ml_in_barrels": total_liquid, "gold": total_gold}
 
 # Gets called once a da
