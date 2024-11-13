@@ -72,12 +72,12 @@ def get_capacity_plan():
         total_gold = result_gold.total_gold
 
         
-        if total_gold >= 1000:
+        if total_gold >= 2000:
             for row in result:
-                if row.name == "potions" and total_gold >= 1000:
+                if row.name == "potions" and total_gold >= 2000:
                     potion_capacity = 1
                     total_gold -= 1000
-                if row.name == "ml" and total_gold >= 1000:
+                if row.name == "ml" and total_gold >= 2000:
                     ml_capacity = 1
                     total_gold -= 1000
 
