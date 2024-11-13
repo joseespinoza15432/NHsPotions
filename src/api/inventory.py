@@ -58,7 +58,7 @@ def get_capacity_plan():
     ml_capacity = 0
 
     with db.engine.begin() as connection:
-        # Retrieve current capacities and amounts
+    
         result = connection.execute(sqlalchemy.text("""
             SELECT name, capacity, amount
             FROM storage
@@ -71,7 +71,7 @@ def get_capacity_plan():
 
         total_gold = result_gold.total_gold
 
-        # Each capacity costs 1000 gold
+        
         if total_gold >= 1000:
             for row in result:
                 if row.name == "potions" and total_gold >= 1000:
@@ -96,7 +96,6 @@ def deliver_capacity_plan(capacity_purchase: CapacityPurchase, order_id: int):
     Deliver the purchased capacities back to the shop.
     """
     with db.engine.begin() as connection:
-        # Update storage for potions
         if capacity_purchase.potion_capacity > 0:
             connection.execute(sqlalchemy.text("""
                 UPDATE storage
@@ -105,7 +104,6 @@ def deliver_capacity_plan(capacity_purchase: CapacityPurchase, order_id: int):
                 WHERE name = 'potions'
                 """), {"added_capacity": capacity_purchase.potion_capacity})
 
-        # Update storage for ml
         if capacity_purchase.ml_capacity > 0:
             connection.execute(sqlalchemy.text("""
                 UPDATE storage
@@ -114,7 +112,6 @@ def deliver_capacity_plan(capacity_purchase: CapacityPurchase, order_id: int):
                 WHERE name = 'ml'
                 """), {"added_capacity": capacity_purchase.ml_capacity})
 
-        # Deduct gold for the purchase
         total_cost = (capacity_purchase.potion_capacity + capacity_purchase.ml_capacity) * 1000
         connection.execute(sqlalchemy.text("""
             INSERT INTO gold_ledger (gold)

@@ -60,14 +60,13 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
                                            
     return "OK"
 
-# Gets called once a day
+
 @router.post("/plan")
 def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     print(wholesale_catalog)
     barrel_plan = []
 
     with db.engine.begin() as connection:
-        # Retrieve current gold and ml storage details
         gold = connection.execute(sqlalchemy.text("""
             SELECT COALESCE(SUM(gold), 0) AS total_gold
             FROM gold_ledger
@@ -109,9 +108,13 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                         barrel_plan.append({"sku": barrel.sku, "quantity": 1})
                         gold -= barrel.price
                         ml_levels[potion] += barrel.ml_per_barrel
-                        break  
+                        break
+                    else:
+                        print(f"Skip {barrel.sku}: too much ml.")
 
             if gold <= 0:
+                print("not enough gold :(")
                 break
-
+            
+        print(barrel_plan)
     return barrel_plan
