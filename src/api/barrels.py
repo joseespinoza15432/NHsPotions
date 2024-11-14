@@ -66,16 +66,16 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     barrel_plan = []
 
     with db.engine.begin() as connection:
-        
         gold = connection.execute(sqlalchemy.text("""
             SELECT COALESCE(SUM(gold), 0) AS total_gold
             FROM gold_ledger
-            """)).scalar()
+        """)).scalar()
+
         ml_storage = connection.execute(sqlalchemy.text("""
             SELECT amount
             FROM storage
             WHERE name = 'ml'
-            """)).scalar()
+        """)).scalar()
 
         result = connection.execute(sqlalchemy.text("""
             SELECT 
@@ -84,19 +84,19 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                 COALESCE(SUM(blue_ml), 0) AS blue_ml,
                 COALESCE(SUM(dark_ml), 0) AS dark_ml
             FROM ml_ledger
-            """)).first()
+        """)).first()
 
         ml_levels = {
             "red_ml": result.red_ml,
             "green_ml": result.green_ml,
             "blue_ml": result.blue_ml,
-            "dark_ml": result.dark_ml
+            "dark_ml": result.dark_ml,
         }
 
         print("Initial gold:", gold)
         print("Initial ml levels:", ml_levels)
         print("Available ml storage:", ml_storage)
-        
+
         sorted_ml_levels = sorted(ml_levels.items(), key=lambda x: x[1])
         sorted_catalog = sorted(wholesale_catalog, key=lambda barrel: barrel.ml_per_barrel / barrel.price, reverse=True)
 
@@ -106,31 +106,28 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
 
             for barrel in sorted_catalog:
                 if barrel.potion_type[potion_index] == 1:
-                    potential_new_ml = current_ml + barrel.ml_per_barrel
-                    total_potential_ml = sum(ml_levels.values()) + barrel.ml_per_barrel  
-                    print(f"barrel: {barrel.sku}, Potential ml: {potential_new_ml}, Total Potential ML: {total_potential_ml}, Gold left: {gold}")
+                    while gold >= barrel.price:
+                        potential_new_ml = current_ml + barrel.ml_per_barrel
+                        total_potential_ml = sum(ml_levels.values()) + barrel.ml_per_barrel
+                        print(f"Evaluating barrel: {barrel.sku}, Potential ml: {potential_new_ml}, Total Potential ML: {total_potential_ml}, Gold left: {gold}")
 
-                    if gold >= barrel.price:
-                        if total_potential_ml <= ml_storage: 
-                    
+                        if total_potential_ml <= ml_storage:
+                            # Add barrel to the plan
                             barrel_plan.append({"sku": barrel.sku, "quantity": 1})
                             gold -= barrel.price
                             ml_levels[potion] += barrel.ml_per_barrel
+                            current_ml += barrel.ml_per_barrel
                             print(f"Added {barrel.sku} to plan. Updated gold: {gold}, Updated {potion}: {ml_levels[potion]}")
-                            break
                         else:
-                            print(f"Skipped {barrel.sku}: exceeds storage capacity")
-                    else:
-                        print(f"Skipped {barrel.sku}: insufficient gold.")
+                            print(f"Skipped {barrel.sku}: exceeds storage capacity.")
+                            break
 
             if gold <= 0:
-                print("Not enough gold ")
                 break
 
-        
         print("Final gold:", gold)
         print("Final ml levels:", ml_levels)
         print("Planned barrels:", barrel_plan)
         print("Available ml storage at end:", ml_storage)
-        
+
     return barrel_plan
