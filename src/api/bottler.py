@@ -84,13 +84,28 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
 @router.post("/plan")
 def get_bottle_plan():
     """
-    Go from barrel to bottle.
+    Create a bottling plan while respecting potion storage limits.
     """
 
     bottle_plan = []
 
     with db.engine.begin() as connection:
-        
+        result_potions = connection.execute(sqlalchemy.text("""
+            SELECT COALESCE(SUM(quantity), 0) AS total_potions
+            FROM potion_ledger
+        """)).first()
+        total_potions = result_potions.total_potions
+
+        storage_capacity = connection.execute(sqlalchemy.text("""
+            SELECT amount
+            FROM storage
+            WHERE name = 'potions'
+        """)).scalar()
+
+        if total_potions >= storage_capacity:
+            print(f"Potion storage full: {total_potions}/{storage_capacity}. No bottling planned.")
+            return bottle_plan  
+
         result = connection.execute(sqlalchemy.text("""
             SELECT 
                 COALESCE(SUM(red_ml), 0) AS red_ml, 
@@ -98,26 +113,30 @@ def get_bottle_plan():
                 COALESCE(SUM(blue_ml), 0) AS blue_ml, 
                 COALESCE(SUM(dark_ml), 0) AS dark_ml
             FROM ml_ledger
-            """)).first()
+        """)).first()
 
         available_ml = [result.red_ml, result.green_ml, result.blue_ml, result.dark_ml]
 
-        while sum(available_ml) >= 100:
-    
+        while sum(available_ml) >= 100 and total_potions < storage_capacity:
             for potion in potion_types:
                 potion_type = potion["type"]
                 if all(available_ml[i] >= potion_type[i] for i in range(4)):
-                    bottle_plan.append(
-                        {
-                            "potion_type": potion_type,
-                            "quantity": 1
-                        })
+                    if total_potions + 1 > storage_capacity:
+                        print(f"Skipping bottling {potion['name']}: Exceeds storage capacity.")
+                        break
+                    
+                    bottle_plan.append({
+                        "potion_type": potion_type,
+                        "quantity": 1
+                    })
+                    total_potions += 1
                     available_ml = [available_ml[i] - potion_type[i] for i in range(4)]
                     break
             else:
-                print("Not enough ml :(")
+                print("Not enough ml to create another potion.")
                 break
 
+    print(f"Bottle plan created: {bottle_plan}")
     return bottle_plan
 
 if __name__ == "__main__":
