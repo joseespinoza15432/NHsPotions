@@ -100,6 +100,8 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         sorted_ml_levels = sorted(ml_levels.items(), key=lambda x: x[1])
         sorted_catalog = sorted(wholesale_catalog, key=lambda barrel: barrel.ml_per_barrel / barrel.price, reverse=True)
 
+        barrel_quantity_map = {}
+
         for potion, current_ml in sorted_ml_levels:
             potion_index = ["red_ml", "green_ml", "blue_ml", "dark_ml"].index(potion)
             print(f"Processing potion type: {potion}, Current ml: {current_ml}")
@@ -112,8 +114,11 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                         print(f"Evaluating barrel: {barrel.sku}, Potential ml: {potential_new_ml}, Total Potential ML: {total_potential_ml}, Gold left: {gold}")
 
                         if total_potential_ml <= ml_storage:
-                            # Add barrel to the plan
-                            barrel_plan.append({"sku": barrel.sku, "quantity": 1})
+                            if barrel.sku in barrel_quantity_map:
+                                barrel_quantity_map[barrel.sku] += 1
+                            else:
+                                barrel_quantity_map[barrel.sku] = 1
+
                             gold -= barrel.price
                             ml_levels[potion] += barrel.ml_per_barrel
                             current_ml += barrel.ml_per_barrel
@@ -123,7 +128,10 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                             break
 
             if gold <= 0:
+                print("Not enough gold to continue purchasing.")
                 break
+
+        barrel_plan = [{"sku": sku, "quantity": quantity} for sku, quantity in barrel_quantity_map.items()]
 
         print("Final gold:", gold)
         print("Final ml levels:", ml_levels)
