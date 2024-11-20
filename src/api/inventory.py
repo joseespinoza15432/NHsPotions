@@ -72,7 +72,7 @@ def get_capacity_plan():
         total_gold = result_gold.total_gold
 
         
-        if total_gold >= 3000:
+        if total_gold >= 1000000:
             for row in result:
                 if row.name == "potions" and total_gold >= 1000:
                     potion_capacity = 1
@@ -95,6 +95,7 @@ def deliver_capacity_plan(capacity_purchase: CapacityPurchase, order_id: int):
     """
     Deliver the purchased capacities back to the shop.
     """
+    
     with db.engine.begin() as connection:
         if capacity_purchase.potion_capacity > 0:
             connection.execute(sqlalchemy.text("""
