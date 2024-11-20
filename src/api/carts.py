@@ -121,7 +121,7 @@ def search_orders(
             "item_sku": row.sku,
             "customer_name": row.name,
             "line_item_total": row.quantity * row.price,
-            "timestamp": row.timestamp.isoformat() + "Z"
+            "timestamp": row.timestamp
         }
         for row in query_results
     ]

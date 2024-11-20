@@ -83,11 +83,9 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
 
 @router.post("/plan")
 def get_bottle_plan():
-    """
-    Create a bottling plan while respecting potion storage limits.
-    """
 
     bottle_plan = []
+    potion_counts = {potion["name"]: 0 for potion in potion_types} 
 
     with db.engine.begin() as connection:
         result_potions = connection.execute(sqlalchemy.text("""
@@ -103,7 +101,7 @@ def get_bottle_plan():
         """)).scalar()
 
         if total_potions >= storage_capacity:
-            print(f"Potion storage full: {total_potions}/{storage_capacity}. No bottling planned.")
+            print(f"Potion storage full: {total_potions}/{storage_capacity}. No bottling planned")
             return bottle_plan  
 
         result = connection.execute(sqlalchemy.text("""
@@ -117,26 +115,33 @@ def get_bottle_plan():
 
         available_ml = [result.red_ml, result.green_ml, result.blue_ml, result.dark_ml]
 
+        potion_index = 0  
         while sum(available_ml) >= 100 and total_potions < storage_capacity:
-            for potion in potion_types:
-                potion_type = potion["type"]
-                if all(available_ml[i] >= potion_type[i] for i in range(4)):
-                    if total_potions + 1 > storage_capacity:
-                        print(f"Skipping bottling {potion['name']}: Exceeds storage capacity.")
-                        break
-                    
-                    bottle_plan.append({
-                        "potion_type": potion_type,
-                        "quantity": 1
-                    })
-                    total_potions += 1
-                    available_ml = [available_ml[i] - potion_type[i] for i in range(4)]
+            potion = potion_types[potion_index]
+            potion_type = potion["type"]
+            
+            if all(available_ml[i] >= potion_type[i] for i in range(4)):
+                if total_potions + 1 > storage_capacity:
+                    print(f"Skipping bottling {potion['name']}: Exceeds storage capacity")
                     break
+
+                
+                bottle_plan.append({
+                    "potion_type": potion_type,
+                    "quantity": 1
+                })
+                total_potions += 1
+                available_ml = [available_ml[i] - potion_type[i] for i in range(4)]
+                potion_counts[potion["name"]] += 1
+
+                print(f"Bottled {potion['name']}. Updated total potions: {total_potions}, Available ML: {available_ml}")
             else:
-                print("Not enough ml to create another potion.")
-                break
+                print(f"Not enough ML for {potion['name']}")
+
+            potion_index = (potion_index + 1) % len(potion_types)
 
     print(f"Bottle plan created: {bottle_plan}")
+    print(f"Potion distribution: {potion_counts}")
     return bottle_plan
 
 if __name__ == "__main__":
