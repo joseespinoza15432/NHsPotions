@@ -97,32 +97,50 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         print("Initial ml levels:", ml_levels)
         print("Available ml storage:", ml_storage)
 
+        barrel_quantity_map = {barrel.sku: barrel.quantity for barrel in wholesale_catalog}
+
         sorted_ml_levels = sorted(ml_levels.items(), key=lambda x: x[1])
-        sorted_catalog = sorted(wholesale_catalog, key=lambda barrel: barrel.ml_per_barrel / barrel.price, reverse=True)
+        sorted_catalog = sorted(wholesale_catalog, key=lambda barrel: barrel.ml_per_barrel, reverse=True)
 
         for potion, current_ml in sorted_ml_levels:
             potion_index = ["red_ml", "green_ml", "blue_ml", "dark_ml"].index(potion)
             print(f"Processing potion type: {potion}, Current ml: {current_ml}")
 
             for barrel in sorted_catalog:
-                if barrel.potion_type[potion_index] == 1:
-                    while gold >= barrel.price:
-                        potential_new_ml = current_ml + barrel.ml_per_barrel
-                        total_potential_ml = sum(ml_levels.values()) + barrel.ml_per_barrel
-                        print(f"Evaluating barrel: {barrel.sku}, Potential ml: {potential_new_ml}, Total Potential ML: {total_potential_ml}, Gold left: {gold}")
+                if barrel.potion_type[potion_index] == 1 and barrel_quantity_map[barrel.sku] > 0:
+                    potential_new_ml = current_ml + barrel.ml_per_barrel
+                    total_potential_ml = sum(ml_levels.values()) + barrel.ml_per_barrel
 
-                        if total_potential_ml <= ml_storage:
-                            # Add barrel to the plan
-                            barrel_plan.append({"sku": barrel.sku, "quantity": 1})
-                            gold -= barrel.price
-                            ml_levels[potion] += barrel.ml_per_barrel
-                            current_ml += barrel.ml_per_barrel
-                            print(f"Added {barrel.sku} to plan. Updated gold: {gold}, Updated {potion}: {ml_levels[potion]}")
+                    print(f"Evaluating barrel: {barrel.sku}, Potential ml: {potential_new_ml}, "
+                          f"Total Potential ML: {total_potential_ml}, Gold left: {gold}, "
+                          f"Barrels remaining: {barrel_quantity_map[barrel.sku]}")
+
+                    if gold >= barrel.price and total_potential_ml <= ml_storage:
+                        if barrel.sku in [b["sku"] for b in barrel_plan]:
+                            for b in barrel_plan:
+                                if b["sku"] == barrel.sku:
+                                    b["quantity"] += 1
+                                    break
                         else:
-                            print(f"Skipped {barrel.sku}: exceeds storage capacity.")
-                            break
+                            barrel_plan.append({"sku": barrel.sku, "quantity": 1})
+
+                        gold -= barrel.price
+                        ml_levels[potion] += barrel.ml_per_barrel
+                        current_ml += barrel.ml_per_barrel
+                        barrel_quantity_map[barrel.sku] -= 1
+
+                        print(f"Added {barrel.sku} to plan. Updated gold: {gold}, Updated {potion}: {ml_levels[potion]}, "
+                              f"Remaining barrels of {barrel.sku}: {barrel_quantity_map[barrel.sku]}")
+
+                    elif barrel_quantity_map[barrel.sku] == 0:
+                        print(f"Skipped {barrel.sku}: No barrels remaining.")
+                    elif total_potential_ml > ml_storage:
+                        print(f"Skipped {barrel.sku}: Exceeds storage capacity.")
+                    elif gold < barrel.price:
+                        print(f"Skipped {barrel.sku}: Insufficient gold.")
 
             if gold <= 0:
+                print("Not enough gold to continue purchasing.")
                 break
 
         print("Final gold:", gold)
@@ -131,4 +149,3 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         print("Available ml storage at end:", ml_storage)
 
     return barrel_plan
-
