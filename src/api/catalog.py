@@ -47,7 +47,7 @@ def get_catalog():
                 "sku": item_sku,
                 "name": item_name,
                 "quantity": quantity,
-                "price": price,
+                "price": 30,
                 "potion_type": [red_ml, green_ml, blue_ml, dark_ml]
             }
             )
